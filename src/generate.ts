@@ -75,6 +75,7 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     const modelInfo = `model=${voiceover.model ?? (provider as { defaultModel?: string }).defaultModel ?? ""}`;
     const voiceInfo = `voice=${voiceover.voice ?? (provider as { defaultVoice?: string }).defaultVoice ?? ""}`;
     _log(`voice: provider=${providerName} ${modelInfo} ${voiceInfo} fresh=${Boolean(fresh)}`);
+    _log(`meta: fps=${composition.meta?.fps ?? "undefined"} width=${composition.meta?.width ?? "undefined"} height=${composition.meta?.height ?? "undefined"}`);
   }
 
   const rng = makeRng(seedOverride ?? voiceover.seed ?? null);
