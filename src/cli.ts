@@ -96,6 +96,16 @@ program
     if (configPath) {
       watchPaths.push(configPath);
     }
+    
+    // Also watch any shared .ts files in the same directories as the DSL files
+    // (e.g., _babulus.shared.ts that gets imported by multiple videos)
+    const dslDirs = Array.from(new Set(dslPaths.map((p) => dirname(p))));
+    for (const dir of dslDirs) {
+      const sharedFiles = readdirSync(dir)
+        .filter((f) => f.endsWith(".ts") && !f.endsWith(".babulus.ts"))
+        .map((f) => join(dir, f));
+      watchPaths.push(...sharedFiles);
+    }
 
     const watcher = chokidar.watch(watchPaths, { ignoreInitial: true });
     console.error("Watching for changes... (Ctrl+C to stop)\n");
@@ -108,7 +118,14 @@ program
         await runOnce();
       } else {
         const dslMatch = dslPaths.find((p) => changedPath === p);
-        await runOnce(dslMatch ? [dslMatch] : undefined);
+        if (dslMatch) {
+          // Direct DSL file changed - only regenerate that one
+          await runOnce([dslMatch]);
+        } else {
+          // Shared/imported file changed - regenerate all videos
+          console.error("Shared file changed; regenerating all compositions...");
+          await runOnce();
+        }
       }
       console.error("\nWaiting for changes... (Ctrl+C to stop)\n");
     });
