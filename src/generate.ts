@@ -383,6 +383,7 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
   const script: Script = {
     scenes: outScenes,
     posterTimeSec: composition.posterTime ?? null,
+    fps: composition.meta?.fps,
   };
   const sceneEndIndex: Record<string, number> = {};
   for (const scene of outScenes) {

@@ -21,6 +21,7 @@ export type Scene = {
 export type Script = {
   scenes: Scene[];
   posterTimeSec?: number | null;
+  fps?: number;
 };
 
 export function makeBullet(text: string): Bullet {
@@ -46,6 +47,9 @@ export function scriptToJson(script: Script): Record<string, unknown> {
   };
   if (script.posterTimeSec != null) {
     out.posterTimeSec = script.posterTimeSec;
+  }
+  if (script.fps != null) {
+    out.fps = script.fps;
   }
   return out;
 }
