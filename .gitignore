@@ -26,6 +26,12 @@ dist/
 build/
 *.egg-info/
 
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
 # Babulus specific
 .babulus/config.yml
 .babulus/out/
