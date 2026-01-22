@@ -103,6 +103,9 @@ program
 
     const watcher = chokidar.watch(watchDirs, { 
       ignoreInitial: true,
+      usePolling: true, // Force polling to ensure changes are detected in all environments
+      interval: 500,    // Poll every 500ms
+      binaryInterval: 1000,
       // Ensure we don't watch node_modules or output directories if they happen to be in the same tree
       ignored: ["**/node_modules/**", "**/.git/**", "**/.babulus/out/**", "**/dist/**"] 
     });
