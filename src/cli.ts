@@ -2,7 +2,7 @@
 
 import { Command } from "commander";
 import { existsSync, statSync, rmSync, readdirSync } from "fs";
-import { dirname, join, resolve } from "path";
+import { dirname, join, resolve, sep } from "path";
 import { loadVideoFile } from "./dsl/load.js";
 import { generateComposition } from "./generate.js";
 import { loadConfig, findProjectRoot } from "./config.js";
@@ -91,43 +91,65 @@ program
       return;
     }
 
-    const watchPaths = [...dslPaths];
     const configPath = findConfigPathForWatch(projectDir, dslPaths[0]);
-    if (configPath) {
-      watchPaths.push(configPath);
-    }
     
-    // Also watch any shared .ts files in the same directories as the DSL files
-    // (e.g., _babulus.shared.ts that gets imported by multiple videos)
+    // Instead of watching specific files, we watch the directories containing them.
+    // This is more robust against atomic writes and editors that replace files.
     const dslDirs = Array.from(new Set(dslPaths.map((p) => dirname(p))));
-    for (const dir of dslDirs) {
-      const sharedFiles = readdirSync(dir)
-        .filter((f) => f.endsWith(".ts") && !f.endsWith(".babulus.ts"))
-        .map((f) => join(dir, f));
-      watchPaths.push(...sharedFiles);
+    const watchDirs = [...dslDirs];
+    if (configPath) {
+      watchDirs.push(dirname(configPath));
     }
 
-    const watcher = chokidar.watch(watchPaths, { ignoreInitial: true });
+    const watcher = chokidar.watch(watchDirs, { 
+      ignoreInitial: true,
+      // Ensure we don't watch node_modules or output directories if they happen to be in the same tree
+      ignored: ["**/node_modules/**", "**/.git/**", "**/.babulus/out/**", "**/dist/**"] 
+    });
+    
     console.error("Watching for changes... (Ctrl+C to stop)\n");
+    if (!opts.quiet) {
+      console.error(`Watching directories:\n${watchDirs.map(d => `  - ${d}`).join('\n')}\n`);
+    }
 
     watcher.on("all", async (_event, changedPath) => {
-      const rel = changedPath.startsWith(cwd) ? changedPath.slice(cwd.length + 1) : changedPath;
-      console.error(`\nCHANGE DETECTED: ${rel}`);
-      if (configPath && changedPath === configPath) {
-        console.error("Config changed; regenerating all compositions...");
-        await runOnce();
-      } else {
-        const dslMatch = dslPaths.find((p) => changedPath === p);
-        if (dslMatch) {
-          // Direct DSL file changed - only regenerate that one
-          await runOnce([dslMatch]);
-        } else {
-          // Shared/imported file changed - regenerate all videos
-          console.error("Shared file changed; regenerating all compositions...");
-          await runOnce();
-        }
+      // Resolve absolute path to ensure matching works
+      const absChanged = resolve(cwd, changedPath);
+      const rel = absChanged.startsWith(cwd) ? absChanged.slice(cwd.length + 1) : absChanged;
+
+      // Filter: Only care about .ts files, .yml/.yaml (config), or specific known files
+      if (!absChanged.endsWith(".ts") && !absChanged.endsWith(".yml") && !absChanged.endsWith(".yaml")) {
+        return;
       }
-      console.error("\nWaiting for changes... (Ctrl+C to stop)\n");
+
+      // Check if it's the config file
+      if (configPath && absChanged === configPath) {
+        console.error(`\nCHANGE DETECTED (Config): ${rel}`);
+        console.error("Regenerating all compositions...");
+        await runOnce();
+        console.error("\nWaiting for changes... (Ctrl+C to stop)\n");
+        return;
+      }
+
+      // Check if it's one of our DSL files
+      const dslMatch = dslPaths.find((p) => p === absChanged);
+      if (dslMatch) {
+        console.error(`\nCHANGE DETECTED (DSL): ${rel}`);
+        await runOnce([dslMatch]);
+        console.error("\nWaiting for changes... (Ctrl+C to stop)\n");
+        return;
+      }
+
+      // Check if it's a shared/imported file in one of our DSL directories
+      // We assume any other .ts file in these directories is a potential dependency
+      const isInDslDir = dslDirs.some(dir => absChanged.startsWith(dir + sep)); // Use path.sep for cross-platform safety
+      if (isInDslDir && absChanged.endsWith(".ts")) {
+        console.error(`\nCHANGE DETECTED (Shared): ${rel}`);
+        console.error("Shared file changed; regenerating all compositions...");
+        await runOnce();
+        console.error("\nWaiting for changes... (Ctrl+C to stop)\n");
+        return;
+      }
     });
   });
 
