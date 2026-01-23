@@ -17,12 +17,15 @@ import { ensureDictionaryFromRules, rulesHash, type PronunciationRule } from "./
 import { ElevenLabsTTSProvider } from "./providers/tts/elevenlabs.js";
 import { createUsageLedger, recordUsage, summarizeUsageFile, summarizeUsageFileDetailed, type UsageEntry } from "./telemetry.js";
 import { estimateUsageCost, getRateCard } from "./pricing.js";
+import { writeRunArtifacts } from "./artifacts.js";
 
 export type GeneratedArtifact = {
   script: Script;
   audioPath: string | null;
   timelinePath: string;
   didSynthesize: boolean;
+  runId?: string;
+  runPath?: string;
 };
 
 export type GenerateOptions = {
@@ -401,6 +404,7 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
         endSec: end,
         text: cue.segments.filter(isTextSegment).map((s) => s.text).join(" ").trim(),
         bullets: cue.bullets.map(makeBullet),
+        markup: cue.markup,
       });
       if (cueStartIndex[cue.id] != null) {
         throw new CompileError(`Duplicate cue id across scenes: "${cue.id}"`);
@@ -416,7 +420,14 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
 
     const sceneEndHint = scene.time ? scene.time.end : null;
     now = Math.max(now, sceneEndHint ?? now);
-    outScenes.push({ id: scene.id, title: scene.title, startSec: sceneStart, endSec: now, cues: cuesOut });
+    outScenes.push({
+      id: scene.id,
+      title: scene.title,
+      startSec: sceneStart,
+      endSec: now,
+      cues: cuesOut,
+      markup: scene.markup,
+    });
     if (sceneStartIndex[scene.id] != null) {
       throw new CompileError(`Duplicate scene id: "${scene.id}"`);
     }
@@ -427,6 +438,7 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     scenes: outScenes,
     posterTimeSec: composition.posterTime ?? null,
     fps: composition.meta?.fps,
+    meta: composition.meta,
   };
   const sceneEndIndex: Record<string, number> = {};
   for (const scene of outScenes) {
@@ -796,7 +808,27 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     }
   }
 
-  return { script, audioPath, timelinePath: timelineOut, didSynthesize };
+  const runArtifacts = writeRunArtifacts({
+    envCacheDir,
+    env: currentEnv,
+    compositionId: composition.id,
+    dslPath,
+    scriptPath: scriptOut,
+    timelinePath: timelineOut,
+    audioPath,
+  });
+  if (verboseLogs) {
+    _log(`run: id=${runArtifacts.runId} path=${runArtifacts.runPath}`);
+  }
+
+  return {
+    script,
+    audioPath,
+    timelinePath: timelineOut,
+    didSynthesize,
+    runId: runArtifacts.runId,
+    runPath: runArtifacts.runPath,
+  };
 }
 
 function normalizeManifest(base: Record<string, unknown>): Record<string, any> {

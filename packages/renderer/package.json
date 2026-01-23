@@ -10,6 +10,9 @@
     "./player": "./src/player.tsx",
     "./context": "./src/context.tsx"
   },
+  "dependencies": {
+    "@babulus/shared": "file:../shared"
+  },
   "peerDependencies": {
     "react": "^18.0.0",
     "react-dom": "^18.0.0"

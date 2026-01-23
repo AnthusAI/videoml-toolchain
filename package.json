@@ -32,6 +32,12 @@
     "baseline:verify": "tsx scripts/verify-baseline.ts",
     "studio:preview": "tsx scripts/studio-preview.ts",
     "studio:watch": "tsx scripts/studio-preview.ts --watch",
+    "render:frame": "tsx scripts/render-frame.ts",
+    "render:frames": "tsx scripts/render-frames.ts",
+    "render:video": "tsx scripts/render-video.ts",
+    "render:pipeline": "tsx scripts/render-pipeline.ts",
+    "render:storyboard": "tsx scripts/render-storyboard.ts",
+    "render:storyboard:frames": "tsx scripts/render-storyboard-frames.ts",
     "test": "npm run bdd"
   },
   "dependencies": {

@@ -7,7 +7,12 @@ export type PlayerProps = {
   config: VideoConfig;
   inputProps?: Record<string, unknown>;
   initialFrame?: number;
+  frame?: number;
+  onFrameChange?: (frame: number) => void;
   autoplay?: boolean;
+  playing?: boolean;
+  onPlayingChange?: (playing: boolean) => void;
+  clock?: "internal" | "external";
   loop?: boolean;
   showControls?: boolean;
   className?: string;
@@ -20,7 +25,12 @@ export const Player = ({
   config,
   inputProps,
   initialFrame = 0,
+  frame: controlledFrame,
+  onFrameChange,
   autoplay = false,
+  playing: controlledPlaying,
+  onPlayingChange,
+  clock = "internal",
   loop = false,
   showControls = true,
   className,
@@ -29,25 +39,36 @@ export const Player = ({
 }: PlayerProps) => {
   const maxFrame = Math.max(0, config.durationFrames - 1);
   const clampFrame = (value: number) => clamp(Math.round(value), 0, maxFrame);
-  const [frame, setFrame] = useState(() => clampFrame(initialFrame));
-  const [playing, setPlaying] = useState(autoplay);
+  const isControlled = typeof controlledFrame === "number";
+  const [internalFrame, setInternalFrame] = useState(() => clampFrame(isControlled ? controlledFrame : initialFrame));
+  const frameValue = isControlled ? clampFrame(controlledFrame ?? 0) : internalFrame;
+  const isPlayingControlled = typeof controlledPlaying === "boolean";
+  const [internalPlaying, setInternalPlaying] = useState(autoplay);
+  const playingValue = isPlayingControlled ? Boolean(controlledPlaying) : internalPlaying;
 
-  const frameRef = useRef(frame);
-  const playingRef = useRef(playing);
+  const frameRef = useRef(frameValue);
+  const playingRef = useRef(playingValue);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
   const accumulatorRef = useRef(0);
 
   useEffect(() => {
-    frameRef.current = frame;
-  }, [frame]);
+    frameRef.current = frameValue;
+  }, [frameValue]);
 
   useEffect(() => {
-    playingRef.current = playing;
-  }, [playing]);
+    playingRef.current = playingValue;
+  }, [playingValue]);
 
   useEffect(() => {
-    if (!playing) {
+    if (clock === "external") {
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      lastTimeRef.current = null;
+      return;
+    }
+    if (!playingValue) {
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current);
       }
@@ -61,7 +82,10 @@ export const Player = ({
         return;
       }
       if (!loop && frameRef.current >= maxFrame) {
-        setPlaying(false);
+        if (!isPlayingControlled) {
+          setInternalPlaying(false);
+        }
+        onPlayingChange?.(false);
         return;
       }
       if (lastTimeRef.current == null) {
@@ -73,18 +97,24 @@ export const Player = ({
         const advance = Math.floor(accumulatorRef.current);
         if (advance > 0) {
           accumulatorRef.current -= advance;
-          setFrame((prev) => {
-            let next = prev + advance;
-            if (next > maxFrame) {
-              if (loop) {
-                next = next % (maxFrame + 1);
-              } else {
-                next = maxFrame;
-                setPlaying(false);
+          let next = frameRef.current + advance;
+          if (next > maxFrame) {
+            if (loop) {
+              next = next % (maxFrame + 1);
+            } else {
+              next = maxFrame;
+              if (!isPlayingControlled) {
+                setInternalPlaying(false);
               }
+              onPlayingChange?.(false);
             }
-            return next;
-          });
+          }
+          const clamped = clampFrame(next);
+          frameRef.current = clamped;
+          if (!isControlled) {
+            setInternalFrame(clamped);
+          }
+          onFrameChange?.(clamped);
         }
         lastTimeRef.current = time;
       }
@@ -97,13 +127,26 @@ export const Player = ({
         cancelAnimationFrame(rafRef.current);
       }
     };
-  }, [config.fps, loop, maxFrame, playing]);
+  }, [clock, config.fps, loop, maxFrame, playingValue]);
 
   const onSeek = (value: number) => {
-    setFrame(clampFrame(value));
+    const clamped = clampFrame(value);
+    frameRef.current = clamped;
+    if (!isControlled) {
+      setInternalFrame(clamped);
+    }
+    onFrameChange?.(clamped);
   };
 
-  const timeSec = useMemo(() => (frame / config.fps).toFixed(2), [frame, config.fps]);
+  const togglePlayback = () => {
+    const next = !playingValue;
+    if (!isPlayingControlled) {
+      setInternalPlaying(next);
+    }
+    onPlayingChange?.(next);
+  };
+
+  const timeSec = useMemo(() => (frameValue / config.fps).toFixed(2), [frameValue, config.fps]);
 
   return (
     <div className={className} style={{ display: "flex", flexDirection: "column", gap: 12, ...style }}>
@@ -118,7 +161,7 @@ export const Player = ({
           ...surfaceStyle,
         }}
       >
-        <RendererProvider frame={frame} config={config}>
+        <RendererProvider frame={frameValue} config={config}>
           <Component {...(inputProps ?? {})} />
         </RendererProvider>
       </div>
@@ -128,27 +171,27 @@ export const Player = ({
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button
               type="button"
-              onClick={() => setPlaying((prev) => !prev)}
+              onClick={togglePlayback}
               style={{
                 padding: "6px 12px",
                 borderRadius: 8,
                 border: "1px solid #1f2937",
-                background: playing ? "#1f2937" : "#111827",
+                background: playingValue ? "#1f2937" : "#111827",
                 color: "white",
                 cursor: "pointer",
               }}
             >
-              {playing ? "Pause" : "Play"}
+              {playingValue ? "Pause" : "Play"}
             </button>
             <div style={{ color: "#9ca3af", fontSize: 13 }}>
-              frame {frame} / {maxFrame} · {timeSec}s
+              frame {frameValue} / {maxFrame} · {timeSec}s
             </div>
           </div>
           <input
             type="range"
             min={0}
             max={maxFrame}
-            value={frame}
+            value={frameValue}
             onChange={(event) => onSeek(Number(event.currentTarget.value))}
             onInput={(event) => onSeek(Number(event.currentTarget.value))}
           />

@@ -5,6 +5,16 @@ export type TimeRange = {
   endIsRelative?: boolean;
 };
 
+export type MarkupValue =
+  | string
+  | number
+  | boolean
+  | null
+  | MarkupValue[]
+  | { [key: string]: MarkupValue };
+
+export type SemanticMarkup = Record<string, MarkupValue>;
+
 export type PauseSpec =
   | { kind: "pause"; mode: "fixed"; seconds: number }
   | { kind: "pause"; mode: "gaussian"; mean: number; std: number; min?: number; max?: number };
@@ -19,6 +29,7 @@ export type CueSpec = {
   label: string;
   segments: VoiceSegmentSpec[];
   bullets: string[];
+  markup?: SemanticMarkup;
   time?: TimeRange;
   provider?: string | null;
 };
@@ -28,6 +39,7 @@ export type SceneSpec = {
   title: string;
   time?: TimeRange;
   items: Array<CueSpec | PauseSpec>;
+  markup?: SemanticMarkup;
 };
 
 export type PronunciationLexemeSpec = {

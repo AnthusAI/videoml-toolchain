@@ -7,6 +7,7 @@ import type {
   CompositionMeta,
   CompositionSpec,
   CueSpec,
+  SemanticMarkup,
   PauseSpec,
   SceneSpec,
   TimeRange,
@@ -148,12 +149,14 @@ class SceneBuilder {
   private time?: TimeRange;
   private items: Array<CueSpec | PauseSpec> = [];
   private audioPlan: AudioPlan;
+  private _markup?: SemanticMarkup;
 
   constructor(name: string, opts: Partial<SceneSpec>, audioPlan: AudioPlan) {
     this.id = opts.id ?? slugify(name);
     this.title = opts.title ?? name;
     this.time = opts.time;
     this.audioPlan = audioPlan;
+    this._markup = opts.markup;
   }
 
   /**
@@ -226,12 +229,17 @@ class SceneBuilder {
     });
   }
 
+  markup(markup: SemanticMarkup): void {
+    this._markup = { ...(this._markup ?? {}), ...markup };
+  }
+
   toSpec(): SceneSpec {
     return {
       id: this.id,
       title: this.title,
       time: this.time,
       items: this.items,
+      markup: this._markup,
     };
   }
 }
@@ -243,12 +251,14 @@ class CueBuilder {
   private _bullets: string[] = [];
   private segments: VoiceSegmentSpec[] = [];
   private provider?: string | null;
+  private _markup?: SemanticMarkup;
 
   constructor(id: string, label: string, opts: Partial<CueSpec>) {
     this.id = id;
     this.label = label;
     this.time = opts.time;
     this.provider = opts.provider ?? null;
+    this._markup = opts.markup;
     if (opts.bullets) {
       this._bullets = [...opts.bullets];
     }
@@ -264,6 +274,10 @@ class CueBuilder {
     this._bullets = [...items];
   }
 
+  markup(markup: SemanticMarkup): void {
+    this._markup = { ...(this._markup ?? {}), ...markup };
+  }
+
   toSpec(): CueSpec {
     return {
       kind: "cue",
@@ -271,6 +285,7 @@ class CueBuilder {
       label: this.label,
       segments: this.segments,
       bullets: this._bullets,
+      markup: this._markup,
       time: this.time,
       provider: this.provider,
     };
