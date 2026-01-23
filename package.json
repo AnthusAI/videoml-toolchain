@@ -7,6 +7,10 @@
   "bin": {
     "babulus": "src/cli.ts"
   },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "exports": {
     ".": "./src/index.ts",
     "./dsl": "./src/dsl/index.ts"
@@ -20,17 +24,49 @@
     "generate": "tsx src/cli.ts generate",
     "clean": "tsx src/cli.ts clean",
     "sfx": "tsx src/cli.ts sfx",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "bdd:raw": "tsx node_modules/.bin/cucumber-js --require \"features/steps/**/*.ts\" \"features/**/*.feature\"",
+    "bdd": "c8 --reporter=text --reporter=lcov --reporter=json-summary npm run bdd:raw",
+    "bdd:watch": "tsx scripts/bdd-watch.ts",
+    "coverage": "npm run bdd",
+    "baseline:verify": "tsx scripts/verify-baseline.ts",
+    "studio:preview": "tsx scripts/studio-preview.ts",
+    "studio:watch": "tsx scripts/studio-preview.ts --watch",
+    "test": "npm run bdd"
   },
   "dependencies": {
     "@aws-sdk/client-polly": "^3.699.0",
     "chokidar": "^3.6.0",
     "commander": "^12.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tsx": "^4.19.0",
     "yaml": "^2.5.1"
   },
   "devDependencies": {
+    "@cucumber/cucumber": "^11.0.1",
     "@types/node": "^22.10.2",
+    "@types/jsdom": "^21.1.7",
+    "@types/react": "^18.3.8",
+    "@types/react-dom": "^18.3.1",
+    "@testing-library/react": "^16.0.1",
+    "c8": "^10.1.2",
+    "jsdom": "^24.1.1",
     "typescript": "^5.7.2"
+  },
+  "c8": {
+    "all": true,
+    "include": [
+      "src/**/*.ts",
+      "packages/**/*.ts",
+      "packages/**/*.tsx"
+    ],
+    "exclude": [
+      "**/*.d.ts",
+      "features/**",
+      "scripts/**",
+      "apps/**",
+      "**/node_modules/**"
+    ]
   }
 }

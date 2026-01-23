@@ -8,10 +8,13 @@ import { generateComposition } from "./generate.js";
 import { loadConfig, findProjectRoot } from "./config.js";
 import { BabulusError } from "./errors.js";
 import { loadSelections, bumpPick, setPick, archiveVariants, restoreVariants, clearLiveVariants } from "./sfx-workflow.js";
-import { getEnvironment } from "./env.js";
+import { getEnvironment, resolveEnvCacheDir } from "./env.js";
 import { probeDurationSec, probeVolumeDb, isAudioAllSilence } from "./media.js";
 import chokidar from "chokidar";
 import type { CompositionSpec } from "./dsl/types.js";
+import { readBaselineRecord, verifyBaseline, writeBaselineRecord } from "./baseline.js";
+import { summarizeUsageFile, summarizeUsageFileDetailed } from "./telemetry.js";
+import type { UsageSummary, UsageUnitType } from "../packages/telemetry/src/index.js";
 
 const program = new Command();
 program.name("babulus").description("Babulus TypeScript CLI");
@@ -23,6 +26,8 @@ program
   .option("--timeline-out <path>", "Output timeline JSON path")
   .option("--audio-out <path>", "Output audio path")
   .option("--out-dir <path>", "Intermediate output dir")
+  .option("--usage-out <path>", "Usage ledger output path")
+  .option("--no-usage", "Disable usage ledger")
   .option("--env <name>", "Set environment for provider selection")
   .option("--environment <name>", "Alias for --env")
   .option("--provider <name>", "Override voiceover.provider")
@@ -43,13 +48,13 @@ program
     const projectDir = opts.projectDir ? resolve(cwd, opts.projectDir) : undefined;
 
     const dslPaths = resolveDslPaths(dslArg, cwd);
-    if (opts.watch && (opts.scriptOut || opts.timelineOut || opts.audioOut || opts.outDir) && dslPaths.length !== 1) {
+    if (opts.watch && (opts.scriptOut || opts.timelineOut || opts.audioOut || opts.outDir || opts.usageOut) && dslPaths.length !== 1) {
       throw new BabulusError("When using --watch with multiple DSLs, omit explicit output overrides.");
     }
 
     const runs = await loadCompositions(dslPaths);
     const totalComps = runs.reduce((sum, r) => sum + r.compositions.length, 0);
-    if ((opts.scriptOut || opts.timelineOut || opts.audioOut || opts.outDir) && totalComps !== 1) {
+    if ((opts.scriptOut || opts.timelineOut || opts.audioOut || opts.outDir || opts.usageOut) && totalComps !== 1) {
       throw new BabulusError("Output overrides require a single composition.");
     }
 
@@ -79,6 +84,7 @@ program
             musicProviderOverride: opts.musicProvider ?? null,
             seedOverride: opts.seed ?? null,
             fresh: Boolean(opts.fresh),
+            usagePath: opts.usage === false ? null : (opts.usageOut ?? undefined),
             log: logger,
             verboseLogs: !opts.quiet,
           });
@@ -328,6 +334,144 @@ sfx
     const { outDir } = await resolveSingleDsl(opts.dsl, opts.outDir, opts.projectDir);
     const deleted = clearLiveVariants(outDir, opts.clip);
     console.error(`${opts.clip}: deleted_files=${deleted}`);
+  });
+
+const usage = program.command("usage").description("Usage telemetry");
+
+usage
+  .command("summarize")
+  .option("--ledger <path>", "Path to usage ledger")
+  .option("--dsl <path>", "Path to .babulus.ts file")
+  .option("--out-dir <path>", "Override output dir")
+  .option("--project-dir <path>", "Project root directory")
+  .option("--env <name>", "Environment to read")
+  .option("--json", "Output JSON summary", false)
+  .option("--detail", "Include provider/kind breakdown", false)
+  .action(async (opts) => {
+    const env = opts.env ?? getEnvironment();
+    let ledgerPath = opts.ledger as string | undefined;
+    if (!ledgerPath) {
+      const { outDir } = await resolveSingleDsl(opts.dsl, opts.outDir, opts.projectDir);
+      ledgerPath = join(resolveEnvCacheDir(outDir, env), "usage.jsonl");
+    }
+    if (!existsSync(ledgerPath)) {
+      throw new BabulusError(`Usage ledger not found: ${ledgerPath}`);
+    }
+    const detailed = Boolean(opts.detail);
+    if (detailed) {
+      const summary = summarizeUsageFileDetailed(ledgerPath);
+      if (opts.json) {
+        console.log(JSON.stringify(summary, null, 2));
+        return;
+      }
+      const printSummary = (label: string, data: UsageSummary) => {
+        console.log(`${label} total_quantity=${data.totalQuantity} estimated_cost=${data.totalEstimatedCost} actual_cost=${data.totalActualCost}`);
+        const unitEntries = Object.entries(data.byUnit) as Array<[UsageUnitType, UsageSummary["byUnit"][UsageUnitType]]>;
+        for (const [unit, unitData] of unitEntries) {
+          if (!unitData.quantity && !unitData.estimatedCost && !unitData.actualCost) {
+            continue;
+          }
+          console.log(`  ${unit}: quantity=${unitData.quantity} estimated_cost=${unitData.estimatedCost} actual_cost=${unitData.actualCost}`);
+        }
+      };
+
+      console.log(`usage ledger: ${ledgerPath}`);
+      printSummary("total", summary.total);
+      for (const [provider, data] of Object.entries(summary.byProvider)) {
+        printSummary(`provider:${provider}`, data);
+      }
+      for (const [kind, data] of Object.entries(summary.byKind)) {
+        printSummary(`kind:${kind}`, data);
+      }
+      return;
+    }
+
+    const summary = summarizeUsageFile(ledgerPath);
+    if (opts.json) {
+      console.log(JSON.stringify(summary, null, 2));
+      return;
+    }
+    const printSummary = (label: string, data: UsageSummary) => {
+      console.log(`${label} total_quantity=${data.totalQuantity} estimated_cost=${data.totalEstimatedCost} actual_cost=${data.totalActualCost}`);
+      const unitEntries = Object.entries(data.byUnit) as Array<[UsageUnitType, UsageSummary["byUnit"][UsageUnitType]]>;
+      for (const [unit, unitData] of unitEntries) {
+        if (!unitData.quantity && !unitData.estimatedCost && !unitData.actualCost) {
+          continue;
+        }
+        console.log(`  ${unit}: quantity=${unitData.quantity} estimated_cost=${unitData.estimatedCost} actual_cost=${unitData.actualCost}`);
+      }
+    };
+
+    console.log(`usage ledger: ${ledgerPath}`);
+    printSummary("total", summary);
+  });
+
+const baseline = program.command("baseline").description("Verify or update baseline records");
+
+baseline
+  .command("verify")
+  .requiredOption("--record <path>", "Path to baseline record JSON")
+  .option("--root <path>", "Root directory used for resolving artifact paths")
+  .action((opts) => {
+    const record = readBaselineRecord(opts.record);
+    const result = verifyBaseline(record, { baseDir: opts.root });
+    if (!result.ok) {
+      if (result.missing.length) {
+        console.error("Missing artifacts:");
+        for (const artifact of result.missing) {
+          console.error(`- ${artifact.path}`);
+        }
+      }
+      if (result.mismatched.length) {
+        console.error("Mismatched artifacts:");
+        for (const mismatch of result.mismatched) {
+          console.error(`- ${mismatch.artifact.path}: expected ${mismatch.expected} got ${mismatch.actual}`);
+        }
+      }
+      throw new BabulusError("Baseline verification failed.");
+    }
+    console.error(`Baseline verified (${record.artifacts.length} artifacts).`);
+  });
+
+baseline
+  .command("update")
+  .requiredOption("--record <path>", "Path to baseline record JSON")
+  .option("--root <path>", "Root directory used for resolving artifact paths")
+  .action((opts) => {
+    const record = readBaselineRecord(opts.record);
+    const result = verifyBaseline(record, { baseDir: opts.root, update: true });
+    if (result.updatedRecord) {
+      writeBaselineRecord(opts.record, result.updatedRecord);
+    }
+    if (result.missing.length) {
+      console.error("Missing artifacts:");
+      for (const artifact of result.missing) {
+        console.error(`- ${artifact.path}`);
+      }
+      throw new BabulusError("Baseline update failed due to missing artifacts.");
+    }
+    console.error(`Baseline updated (${record.artifacts.length} artifacts).`);
+  });
+
+baseline
+  .command("init")
+  .requiredOption("--record <path>", "Path to baseline record JSON")
+  .option("--artifact <path...>", "Artifact path(s)")
+  .option("--optional <path...>", "Optional artifact path(s)")
+  .action((opts) => {
+    const artifacts = Array.isArray(opts.artifact) ? opts.artifact : [];
+    if (!artifacts.length) {
+      throw new BabulusError("baseline init requires at least one --artifact path.");
+    }
+    const optionalSet = new Set(Array.isArray(opts.optional) ? opts.optional : []);
+    const record = {
+      artifacts: artifacts.map((path: string) => ({
+        path,
+        optional: optionalSet.has(path) ? true : undefined,
+      })),
+    };
+    writeBaselineRecord(opts.record, record);
+    console.error(`Baseline record created (${record.artifacts.length} artifacts).`);
   });
 
 program

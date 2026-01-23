@@ -15,6 +15,8 @@ import { concatAudioFiles, estimateTrailingSilenceSec, probeDurationSec, trimAud
 import { loadSelections, selectionPath } from "./sfx-workflow.js";
 import { ensureDictionaryFromRules, rulesHash, type PronunciationRule } from "./elevenlabs-pronunciation.js";
 import { ElevenLabsTTSProvider } from "./providers/tts/elevenlabs.js";
+import { createUsageLedger, recordUsage, summarizeUsageFile, summarizeUsageFileDetailed, type UsageEntry } from "./telemetry.js";
+import { estimateUsageCost, getRateCard } from "./pricing.js";
 
 export type GeneratedArtifact = {
   script: Script;
@@ -36,6 +38,7 @@ export type GenerateOptions = {
   musicProviderOverride?: string | null;
   seedOverride?: number | null;
   fresh?: boolean;
+  usagePath?: string | null;
   log?: (msg: string) => void;
   verboseLogs?: boolean;
 };
@@ -70,10 +73,12 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
   const defaultTrimEnd = voiceover.trimEndSeconds ?? 0;
   const providerName = providerOverride ?? voiceover.provider ?? getDefaultProvider(config) ?? "dry-run";
   const provider = getTtsProvider(providerName, config);
+  const resolvedModel = voiceover.model ?? (provider as { defaultModel?: string }).defaultModel ?? null;
+  const resolvedVoice = voiceover.voice ?? (provider as { defaultVoice?: string }).defaultVoice ?? null;
 
   if (verboseLogs) {
-    const modelInfo = `model=${voiceover.model ?? (provider as { defaultModel?: string }).defaultModel ?? ""}`;
-    const voiceInfo = `voice=${voiceover.voice ?? (provider as { defaultVoice?: string }).defaultVoice ?? ""}`;
+    const modelInfo = `model=${resolvedModel ?? ""}`;
+    const voiceInfo = `voice=${resolvedVoice ?? ""}`;
     _log(`voice: provider=${providerName} ${modelInfo} ${voiceInfo} fresh=${Boolean(fresh)}`);
     _log(`meta: fps=${composition.meta?.fps ?? "undefined"} width=${composition.meta?.width ?? "undefined"} height=${composition.meta?.height ?? "undefined"}`);
   }
@@ -84,6 +89,9 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
   const envCacheDir = resolveEnvCacheDir(outDir, currentEnv);
   const segmentsDir = join(envCacheDir, "segments");
   ensureDir(segmentsDir);
+  const usagePath = options.usagePath === undefined ? join(envCacheDir, "usage.jsonl") : options.usagePath;
+  const usageLedger = usagePath ? createUsageLedger(usagePath) : null;
+  const rateCard = getRateCard(config);
   const manifestPath = join(envCacheDir, "manifest.json");
   const baseManifest = fresh ? {} : loadManifest(manifestPath);
   const manifest = normalizeManifest(baseManifest);
@@ -189,6 +197,14 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     timelineItems.push({ type: "lead_in", startSec: 0, endSec: now, seconds: now });
   }
 
+  const recordUsageEvent = (entry: Omit<UsageEntry, "timestamp">) => {
+    if (!usageLedger) {
+      return;
+    }
+    const estimatedCost = estimateUsageCost(entry, rateCard);
+    recordUsage(usageLedger, { ...entry, estimatedCost });
+  };
+
   for (const scene of composition.scenes) {
     const sceneStart = scene.time ? scene.time.start : now;
     if (scene.time && sceneStart < now - 1e-6) {
@@ -271,6 +287,19 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
               },
               segPath,
             );
+            recordUsageEvent({
+              kind: "tts",
+              unitType: "chars",
+              quantity: segSpec.text.length,
+              provider: providerName,
+              compositionId: composition.id,
+              sceneId: scene.id,
+              cueId: cue.id,
+              segmentIndex: segIndex,
+              model: resolvedModel,
+              voice: resolvedVoice,
+              env: currentEnv,
+            });
             duration = seg.durationSec;
             didSynthesize = true;
           } catch (err) {
@@ -295,6 +324,19 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
             },
             segPath,
           );
+          recordUsageEvent({
+            kind: "tts",
+            unitType: "chars",
+            quantity: segSpec.text.length,
+            provider: providerName,
+            compositionId: composition.id,
+            sceneId: scene.id,
+            cueId: cue.id,
+            segmentIndex: segIndex,
+            model: resolvedModel,
+            voice: resolvedVoice,
+            env: currentEnv,
+          });
           duration = seg.durationSec;
           didSynthesize = true;
         }
@@ -541,6 +583,17 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
                 }, outPath);
                 dur = seg.durationSec;
                 didSynthesize = true;
+                recordUsageEvent({
+                  kind: "music",
+                  unitType: "seconds",
+                  quantity: seg.durationSec,
+                  provider: defaultMusicProvider,
+                  compositionId: composition.id,
+                  sceneId: sceneId ?? undefined,
+                  clipId: clip.id,
+                  env: currentEnv,
+                  promptChars: clip.prompt?.length ?? 0,
+                });
               } catch (err) {
                 const msg = err instanceof Error ? err.message.split("\n")[0] : String(err);
                 _log(`music: synth-failed clip=${clip.id} variant=${v + 1}/${variants} err=${msg}`);
@@ -628,6 +681,7 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
           };
           const sfxExt = defaultSfxProvider === "elevenlabs" ? ".mp3" : ".wav";
           const generated: Array<Record<string, unknown>> = [];
+          const sfxSceneId = resolveSceneForStart(clip.start, startSec, outScenes, cueSceneIndex);
 
           for (let v = 0; v < variants; v += 1) {
             const sfxKey = hashKey({
@@ -659,6 +713,17 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
               }, outPath);
               dur = seg.durationSec;
               didSynthesize = true;
+              recordUsageEvent({
+                kind: "sfx",
+                unitType: "seconds",
+                quantity: seg.durationSec,
+                provider: defaultSfxProvider,
+                compositionId: composition.id,
+                sceneId: sfxSceneId ?? undefined,
+                clipId: clip.id,
+                env: currentEnv,
+                promptChars: clip.prompt?.length ?? 0,
+              });
             }
             setManifestEntry(manifest, "sfx", outPath, sfxKey, dur, {
               provider: defaultSfxProvider,
@@ -710,6 +775,17 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
   }
 
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+  if (usageLedger && usageLedger.entries.length) {
+    const summary = summarizeUsageFile(usageLedger.path);
+    const summaryPath = join(dirname(usageLedger.path), "usage-summary.json");
+    writeFileSync(summaryPath, JSON.stringify(summary, null, 2) + "\n");
+    const detailed = summarizeUsageFileDetailed(usageLedger.path);
+    const detailedPath = join(dirname(usageLedger.path), "usage-summary-detailed.json");
+    writeFileSync(detailedPath, JSON.stringify(detailed, null, 2) + "\n");
+    if (verboseLogs) {
+      _log(`usage: summary=${summaryPath} detail=${detailedPath} events=${usageLedger.entries.length}`);
+    }
+  }
 
   let audioPath: string | null = null;
   if (audioOutPath) {

@@ -4,8 +4,15 @@ import { join, basename, dirname } from "path";
 import { CompileError } from "./errors.js";
 import { ensureDir } from "./util.js";
 
+type SpawnFn = typeof spawnSync;
+let spawn = spawnSync;
+
+export function setMediaSpawn(fn?: SpawnFn): void {
+  spawn = fn ?? spawnSync;
+}
+
 function run(cmd: string, args: string[], opts?: { text?: boolean }): { stdout: Buffer; stderr: Buffer } {
-  const res = spawnSync(cmd, args, {
+  const res = spawn(cmd, args, {
     encoding: opts?.text ? "utf-8" : "buffer",
     maxBuffer: 50 * 1024 * 1024,
   });
@@ -46,7 +53,7 @@ export function probeDurationSec(path: string): number {
 }
 
 export function probeVolumeDb(path: string, seconds = 3.0): { mean_volume_db: number | null; max_volume_db: number | null } {
-  const res = spawnSync("ffmpeg", [
+  const res = spawn("ffmpeg", [
     "-hide_banner",
     "-v",
     "info",
@@ -93,7 +100,7 @@ export function probeVolumeDb(path: string, seconds = 3.0): { mean_volume_db: nu
 }
 
 export function isAudioAllSilence(path: string, seconds = 3.0, sampleRateHz = 44100): boolean {
-  const res = spawnSync("ffmpeg", [
+  const res = spawn("ffmpeg", [
     "-v",
     "error",
     "-t",
@@ -132,7 +139,7 @@ export function audioActivityRatio(
   sampleRateHz = 44100,
   amplitudeThreshold = 200,
 ): number {
-  const res = spawnSync("ffmpeg", [
+  const res = spawn("ffmpeg", [
     "-v",
     "error",
     "-t",
@@ -185,7 +192,7 @@ export function trimAudioToDuration(
   } else {
     codecArgs.push("-ac", "1", "-ar", String(sampleRateHz));
   }
-  const res = spawnSync("ffmpeg", [
+  const res = spawn("ffmpeg", [
     "-y",
     "-v",
     "error",
@@ -225,7 +232,7 @@ export function estimateTrailingSilenceSec(
   }
   const analyze = Math.min(maxAnalyzeSec, duration);
   const start = Math.max(0, duration - analyze);
-  const res = spawnSync("ffmpeg", [
+  const res = spawn("ffmpeg", [
     "-v",
     "error",
     "-ss",
@@ -277,7 +284,7 @@ export function concatAudioFiles(outPath: string, segmentPaths: string[]): void 
   const lines = segmentPaths.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join("\n");
   writeFileSync(listPath, `${lines}\n`, "utf-8");
   try {
-    const res = spawnSync("ffmpeg", [
+    const res = spawn("ffmpeg", [
       "-y",
       "-f",
       "concat",
