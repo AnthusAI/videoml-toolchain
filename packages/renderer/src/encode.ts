@@ -8,6 +8,7 @@ export type EncodeVideoOptions = {
   audioPath?: string | null;
   framePattern?: string;
   ffmpegPath?: string;
+  ffmpegArgs?: string[];
 };
 
 export type EncodeRunnerResult = {
@@ -24,6 +25,7 @@ export const buildFfmpegArgs = ({
   outputPath,
   audioPath,
   framePattern = defaultFramePattern,
+  ffmpegArgs,
 }: EncodeVideoOptions): string[] => {
   const args = ["-y", "-framerate", String(fps), "-i", join(framesDir, framePattern)];
   if (audioPath) {
@@ -33,7 +35,11 @@ export const buildFfmpegArgs = ({
   if (audioPath) {
     args.push("-c:a", "aac", "-b:a", "192k");
   }
-  args.push("-r", String(fps), outputPath);
+  args.push("-r", String(fps));
+  if (ffmpegArgs && ffmpegArgs.length) {
+    args.push(...ffmpegArgs);
+  }
+  args.push(outputPath);
   return args;
 };
 

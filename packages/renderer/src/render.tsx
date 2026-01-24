@@ -1,4 +1,5 @@
 import { mkdirSync, writeFileSync } from "fs";
+import { cpus } from "os";
 import { dirname, join } from "path";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -31,6 +32,7 @@ export type RenderFramesPngOptions = RenderFrameOptions & {
   deviceScaleFactor?: number;
   browser?: BrowserAdapter;
   autoClose?: boolean;
+  workers?: number;
   onFrame?: (frame: number, path: string) => void;
 };
 
@@ -160,6 +162,16 @@ const formatFrameName = (pattern: string, frame: number): string => {
   return pattern;
 };
 
+const resolveWorkerCount = (workers?: number): number => {
+  if (workers == null) {
+    return Math.max(1, Math.min(4, cpus().length || 1));
+  }
+  if (!Number.isFinite(workers) || workers <= 1) {
+    return 1;
+  }
+  return Math.max(1, Math.floor(workers));
+};
+
 export const renderFrameToPng = async ({
   outPath,
   deviceScaleFactor = 1,
@@ -201,6 +213,7 @@ export const renderFramesToPng = async ({
   deviceScaleFactor = 1,
   browser,
   autoClose,
+  workers,
   onFrame,
   ...options
 }: RenderFramesPngOptions): Promise<RenderFramesResult> => {
@@ -215,37 +228,72 @@ export const renderFramesToPng = async ({
   const providedBrowser = browser ?? (await loadPlaywright()).chromium.launch();
   const activeBrowser = await providedBrowser;
   const shouldClose = autoClose ?? !browser;
-  const { page, closeContext } = await createPage(activeBrowser, {
-    width: options.config.width,
-    height: options.config.height,
-    deviceScaleFactor,
-  });
-  await applyViewport(page, {
-    width: options.config.width,
-    height: options.config.height,
-    deviceScaleFactor,
-  });
 
   const frames: Array<{ frame: number; path: string }> = [];
   ensureDir(outDir);
-  for (let frame = firstFrame; frame <= lastFrame; frame += 1) {
-    const html = renderFrameToHtml({ ...options, frame });
-    await page.setContent(html, { waitUntil: "load" });
-    const buffer = await page.screenshot({ type: "png" });
-    const fileName = formatFrameName(framePattern, frame);
-    const outPath = join(outDir, fileName);
-    ensureDir(dirname(outPath));
-    writeFileSync(outPath, buffer);
-    frames.push({ frame, path: outPath });
-    onFrame?.(frame, outPath);
-  }
+  const totalFrames = lastFrame - firstFrame + 1;
+  const workerCount = Math.min(resolveWorkerCount(workers), totalFrames);
+  const nextFrameRef = { value: firstFrame };
 
-  await page.close?.();
-  await closeContext?.();
+  const takeNextFrame = () => {
+    if (nextFrameRef.value > lastFrame) {
+      return null;
+    }
+    const next = nextFrameRef.value;
+    nextFrameRef.value += 1;
+    return next;
+  };
+
+  const renderWithPage = async (page: PageAdapter) => {
+    for (;;) {
+      const frame = takeNextFrame();
+      if (frame == null) {
+        return;
+      }
+      const html = renderFrameToHtml({ ...options, frame });
+      await page.setContent(html, { waitUntil: "load" });
+      const buffer = await page.screenshot({ type: "png" });
+      const fileName = formatFrameName(framePattern, frame);
+      const outPath = join(outDir, fileName);
+      ensureDir(dirname(outPath));
+      writeFileSync(outPath, buffer);
+      frames.push({ frame, path: outPath });
+      onFrame?.(frame, outPath);
+    }
+  };
+
+  const workersPool = await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      const { page, closeContext } = await createPage(activeBrowser, {
+        width: options.config.width,
+        height: options.config.height,
+        deviceScaleFactor,
+      });
+      await applyViewport(page, {
+        width: options.config.width,
+        height: options.config.height,
+        deviceScaleFactor,
+      });
+      return { page, closeContext };
+    }),
+  );
+
+  await Promise.all(
+    workersPool.map(async ({ page, closeContext }) => {
+      try {
+        await renderWithPage(page);
+      } finally {
+        await page.close?.();
+        await closeContext?.();
+      }
+    }),
+  );
+
   if (shouldClose) {
     await activeBrowser.close?.();
   }
 
+  frames.sort((a, b) => a.frame - b.frame);
   return { frames };
 };
 

@@ -19,7 +19,9 @@ export type RenderVideoOptions = {
   startFrame?: number;
   endFrame?: number;
   deviceScaleFactor?: number;
+  workers?: number;
   ffmpegPath?: string;
+  ffmpegArgs?: string[];
   browser?: RenderFramesPngOptions["browser"];
   onFrame?: RenderFramesPngOptions["onFrame"];
   renderFrames?: (options: RenderFramesPngOptions) => Promise<RenderFramesResult>;
@@ -43,7 +45,9 @@ export const renderVideo = async ({
   startFrame,
   endFrame,
   deviceScaleFactor,
+  workers,
   ffmpegPath,
+  ffmpegArgs,
   browser,
   onFrame,
   renderFrames,
@@ -61,6 +65,7 @@ export const renderVideo = async ({
     endFrame,
     framePattern,
     deviceScaleFactor,
+    workers,
     browser,
     onFrame,
   };
@@ -76,6 +81,7 @@ export const renderVideo = async ({
       audioPath,
       framePattern,
       ffmpegPath,
+      ffmpegArgs,
     },
     encodeRunner,
   );
