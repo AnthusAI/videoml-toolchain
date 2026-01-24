@@ -43,6 +43,8 @@
     "test": "npm run bdd"
   },
   "dependencies": {
+    "@aws-amplify/backend": "^1.19.0",
+    "@aws-amplify/backend-cli": "^1.8.1",
     "@aws-sdk/client-polly": "^3.699.0",
     "chokidar": "^3.6.0",
     "commander": "^12.1.0",
@@ -52,8 +54,6 @@
     "yaml": "^2.5.1"
   },
   "devDependencies": {
-    "@aws-amplify/backend": "^1.19.0",
-    "@aws-amplify/backend-cli": "^1.8.1",
     "@cucumber/cucumber": "^11.0.1",
     "@types/node": "^22.10.2",
     "@types/jsdom": "^21.1.7",
