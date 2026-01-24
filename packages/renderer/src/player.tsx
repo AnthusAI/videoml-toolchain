@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { clamp } from "./math.js";
-import { RendererProvider, type VideoConfig } from "./context.js";
+import { clamp } from "./math.ts";
+import { RendererProvider, type VideoConfig } from "./context.tsx";
 
-export type PlayerProps = {
-  component: React.ComponentType<Record<string, unknown>>;
+export type PlayerProps<T extends Record<string, unknown> = Record<string, unknown>> = {
+  component: React.ComponentType<T>;
   config: VideoConfig;
-  inputProps?: Record<string, unknown>;
+  inputProps?: T;
   initialFrame?: number;
   frame?: number;
   onFrameChange?: (frame: number) => void;
@@ -20,7 +20,7 @@ export type PlayerProps = {
   surfaceStyle?: React.CSSProperties;
 };
 
-export const Player = ({
+export const Player = <T extends Record<string, unknown> = Record<string, unknown>>({
   component: Component,
   config,
   inputProps,
@@ -36,7 +36,7 @@ export const Player = ({
   className,
   style,
   surfaceStyle,
-}: PlayerProps) => {
+}: PlayerProps<T>) => {
   const maxFrame = Math.max(0, config.durationFrames - 1);
   const clampFrame = (value: number) => clamp(Math.round(value), 0, maxFrame);
   const isControlled = typeof controlledFrame === "number";
@@ -162,7 +162,7 @@ export const Player = ({
         }}
       >
         <RendererProvider frame={frameValue} config={config}>
-          <Component {...(inputProps ?? {})} />
+          <Component {...(inputProps ?? ({} as T))} />
         </RendererProvider>
       </div>
 

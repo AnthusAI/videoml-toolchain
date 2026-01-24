@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { getActiveCue, getActiveScene, type ScriptData } from "@babulus/shared";
-import { useCurrentFrame, useVideoConfig } from "./context.js";
+import { useCurrentFrame, useVideoConfig } from "./context.tsx";
 
 export type StoryboardRendererProps = {
   script: ScriptData;

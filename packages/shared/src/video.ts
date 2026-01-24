@@ -1,4 +1,4 @@
-import { summarizeTimeline, type TimelineData, type TimelineSummary } from "./timeline.js";
+import { summarizeTimeline, type TimelineData, type TimelineSummary } from "./timeline.ts";
 
 export type MarkupValue =
   | string

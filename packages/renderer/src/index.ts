@@ -1,10 +1,15 @@
-export * from "./math.js";
-export * from "./context.js";
-export * from "./player.js";
-export * from "./sequence.js";
-export * from "./render.js";
-export * from "./encode.js";
-export * from "./pipeline.js";
-export * from "./storyboard.js";
-export * from "./storyboard-frames.js";
-export * from "./storyboard-render.js";
+// Browser-safe exports
+export * from "./math.ts";
+export * from "./context.tsx";
+export * from "./player.tsx";
+export * from "./sequence.tsx";
+export * from "./storyboard.tsx";
+
+// Server-only modules - import directly when needed:
+// import { renderFramesToPng } from "@babulus/renderer/src/render.tsx";
+// import { encodeVideo } from "@babulus/renderer/src/encode.ts";
+// import { renderVideo } from "@babulus/renderer/src/pipeline.ts";
+// import { renderStoryboard } from "@babulus/renderer/src/storyboard-render.ts";
+// import { toolchain } from "@babulus/renderer/src/toolchain.ts";
+// import { renderStoryboardFramesPng } from "@babulus/renderer/src/storyboard-frames-png.ts";
+// import { renderFramesToHtml } from "@babulus/renderer/src/storyboard-frames.ts";
