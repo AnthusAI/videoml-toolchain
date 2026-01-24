@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 
 import { Command } from "commander";
-import { existsSync, statSync, rmSync, readdirSync } from "fs";
+import { existsSync, statSync, rmSync, readdirSync, writeFileSync } from "fs";
 import { dirname, join, resolve, sep } from "path";
 import { loadVideoFile } from "./dsl/load.js";
 import { generateComposition } from "./generate.js";
@@ -13,6 +13,7 @@ import { probeDurationSec, probeVolumeDb, isAudioAllSilence } from "./media.js";
 import chokidar from "chokidar";
 import type { CompositionSpec } from "./dsl/types.js";
 import { readBaselineRecord, verifyBaseline, writeBaselineRecord } from "./baseline.js";
+import { readWorkerJob, runWorkerJob } from "./worker.js";
 import { summarizeUsageFile, summarizeUsageFileDetailed } from "./telemetry.js";
 import type { UsageSummary, UsageUnitType } from "../packages/telemetry/src/index.js";
 
@@ -472,6 +473,35 @@ baseline
     };
     writeBaselineRecord(opts.record, record);
     console.error(`Baseline record created (${record.artifacts.length} artifacts).`);
+  });
+
+const worker = program.command("worker").description("Execution-plane worker helpers");
+
+worker
+  .command("run")
+  .requiredOption("--job <path>", "Path to worker job JSON")
+  .option("--result <path>", "Write worker result JSON to this path")
+  .option("--dry-run", "Validate inputs without rendering", false)
+  .option("--quiet", "Suppress worker progress logs", false)
+  .action(async (opts) => {
+    const jobPath = resolve(opts.job);
+    if (!existsSync(jobPath)) {
+      throw new BabulusError(`Job file not found: ${opts.job}`);
+    }
+    const job = readWorkerJob(jobPath);
+    const logger = opts.quiet ? undefined : (msg: string) => console.error(`[worker] ${msg}`);
+    const result = await runWorkerJob(job, { baseDir: dirname(jobPath), dryRun: Boolean(opts.dryRun), log: logger });
+
+    if (opts.result) {
+      const resultPath = resolve(opts.result);
+      writeFileSync(resultPath, JSON.stringify(result, null, 2) + "\n");
+      console.error(`worker result: ${resultPath}`);
+    }
+
+    if (result.status === "failed") {
+      throw new BabulusError(result.error ?? "Worker job failed.");
+    }
+    console.error(`worker ${result.status}: ${result.outputPath ?? "output not set"}`);
   });
 
 program
