@@ -157,7 +157,6 @@ export const Player = <T extends Record<string, unknown> = Record<string, unknow
           background: "#0b0f1a",
           borderRadius: 12,
           overflow: "hidden",
-          boxShadow: "0 20px 50px rgba(0,0,0,0.25)",
           ...surfaceStyle,
         }}
       >
@@ -175,8 +174,8 @@ export const Player = <T extends Record<string, unknown> = Record<string, unknow
               style={{
                 padding: "6px 12px",
                 borderRadius: 8,
-                border: "1px solid #1f2937",
-                background: playingValue ? "#1f2937" : "#111827",
+                border: "none",
+                background: playingValue ? "#374151" : "#1f2937",
                 color: "white",
                 cursor: "pointer",
               }}
