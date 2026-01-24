@@ -12,6 +12,8 @@ export type Org = {
   name: string;
   createdAt: ISODateString;
   planTier?: string | null;
+  customDomain?: string | null;
+  customDomainVerified?: boolean | null;
 };
 
 export type OrgMember = {
@@ -176,6 +178,18 @@ export type BillingAccount = {
   billingMode: BillingMode;
   usageVisibilityMode: UsageVisibilityMode;
   createdAt: ISODateString;
+};
+
+export type PublishedVideo = {
+  id: ID;
+  orgId: ID;
+  videoId: ID;
+  renderRunId: ID;
+  slug: string;
+  accessPolicy: "public" | "password" | "org_only";
+  passwordHash?: string | null;
+  viewCount: number;
+  publishedAt: ISODateString;
 };
 
 export * from "./storage.ts";

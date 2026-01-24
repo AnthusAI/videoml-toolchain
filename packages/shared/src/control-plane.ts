@@ -18,6 +18,7 @@ import type {
   RunStatus,
   StoryboardVersion,
   Video,
+  PublishedVideo, // Add this
 } from "./index.ts";
 import { assertOrgScope } from "./org-scope.ts";
 import {
@@ -39,6 +40,7 @@ import {
   buildRenderRunRecord,
   buildStoryboardVersionRecord,
   buildVideoRecord,
+  buildPublishedVideoRecord, // Add this
   type CreateGenerationRunInput,
   type CreateAssetInput,
   type CreateJobInput,
@@ -56,6 +58,7 @@ import {
   type CreateRenderRunInput,
   type CreateStoryboardVersionInput,
   type CreateVideoInput,
+  type CreatePublishedVideoInput, // Add this
   type RecordContext,
 } from "./records.ts";
 import { updateVideoStatus, type VideoStatus } from "./video-status.ts";
@@ -78,6 +81,7 @@ export type ControlPlaneStore = {
   storyboardVersions: StoryboardVersion[];
   generationRuns: GenerationRun[];
   renderRuns: RenderRun[];
+  publishedVideos: PublishedVideo[]; // Add this
 };
 
 export const createControlPlaneStore = (seed?: Partial<ControlPlaneStore>): ControlPlaneStore => {
@@ -99,6 +103,7 @@ export const createControlPlaneStore = (seed?: Partial<ControlPlaneStore>): Cont
     storyboardVersions: seed?.storyboardVersions ? [...seed.storyboardVersions] : [],
     generationRuns: seed?.generationRuns ? [...seed.generationRuns] : [],
     renderRuns: seed?.renderRuns ? [...seed.renderRuns] : [],
+    publishedVideos: seed?.publishedVideos ? [...seed.publishedVideos] : [], // Add this
   };
 };
 
@@ -824,6 +829,35 @@ export const setRenderRunStatus = (
   const updated: RenderRun = { ...run, status };
   store.renderRuns = store.renderRuns.map((entry) => (entry.id === runId ? updated : entry));
   return updated;
+};
+
+export const createPublishedVideo = (
+  store: ControlPlaneStore,
+  input: CreatePublishedVideoInput,
+  activeOrgId: string,
+  context?: Partial<RecordContext>,
+): PublishedVideo => {
+  requireVideo(store, input.videoId, activeOrgId);
+  requireRenderRun(store, input.renderRunId, activeOrgId);
+  const record = buildPublishedVideoRecord(input, activeOrgId, context);
+  store.publishedVideos.push(record);
+  return record;
+};
+
+export const listPublishedVideos = (
+  store: ControlPlaneStore,
+  activeOrgId: string,
+  videoId?: string | null,
+): PublishedVideo[] => {
+  return store.publishedVideos.filter((video) => {
+    if (video.orgId !== activeOrgId) {
+      return false;
+    }
+    if (videoId) {
+      return video.videoId === videoId;
+    }
+    return true;
+  });
 };
 
 export const listRenderRuns = (

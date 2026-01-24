@@ -22,6 +22,7 @@ import type {
   RenderAgent,
   Video,
   VideoStatus,
+  PublishedVideo, // Add this
 } from "./index.ts";
 import { applyOrgScope } from "./org-scope.ts";
 import { buildAssetKey, buildGenerationArtifactKeys, buildRenderArtifactKeys } from "./storage.ts";
@@ -61,6 +62,17 @@ export type CreateVideoInput = {
   title: string;
   status?: VideoStatus | null;
   activeStoryboardVersionId?: string | null;
+};
+
+export type CreatePublishedVideoInput = {
+  orgId?: string | null;
+  videoId: string;
+  renderRunId: string;
+  slug: string;
+  accessPolicy: PublishedVideo["accessPolicy"];
+  passwordHash?: string | null;
+  viewCount?: number | null;
+  publishedAt?: string | null;
 };
 
 export type CreateConversationInput = {
@@ -541,6 +553,43 @@ export const buildVideoRecord = (
     status: resolveStatus(resolved.status, "draft"),
     activeStoryboardVersionId: resolved.activeStoryboardVersionId ?? null,
     createdAt: ctx.now().toISOString(),
+  };
+};
+
+export const buildPublishedVideoInput = (
+  input: CreatePublishedVideoInput,
+  activeOrgId: string,
+): CreatePublishedVideoInput & { orgId: string } => {
+  const scoped = applyOrgScope(input, activeOrgId);
+  return {
+    ...scoped,
+    videoId: requireText("Video id", scoped.videoId),
+    renderRunId: requireText("Render run id", scoped.renderRunId),
+    slug: requireText("Slug", scoped.slug),
+    accessPolicy: requireText("Access policy", scoped.accessPolicy) as PublishedVideo["accessPolicy"],
+    passwordHash: normalizeOptionalText(scoped.passwordHash ?? null),
+    viewCount: normalizeOptionalNumber("View count", scoped.viewCount ?? 0),
+    publishedAt: normalizeOptionalText(scoped.publishedAt ?? null),
+  };
+};
+
+export const buildPublishedVideoRecord = (
+  input: CreatePublishedVideoInput,
+  activeOrgId: string,
+  context?: Partial<RecordContext>,
+): PublishedVideo => {
+  const resolved = buildPublishedVideoInput(input, activeOrgId);
+  const ctx = resolveContext(context);
+  return {
+    id: ctx.id(),
+    orgId: resolved.orgId,
+    videoId: resolved.videoId,
+    renderRunId: resolved.renderRunId,
+    slug: resolved.slug,
+    accessPolicy: resolved.accessPolicy,
+    passwordHash: resolved.passwordHash ?? null,
+    viewCount: resolved.viewCount ?? 0,
+    publishedAt: resolved.publishedAt ?? ctx.now().toISOString(),
   };
 };
 
