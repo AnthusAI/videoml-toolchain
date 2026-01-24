@@ -8,7 +8,13 @@
   "exports": {
     ".": "./src/index.ts",
     "./player": "./src/player.tsx",
-    "./context": "./src/context.tsx"
+    "./context": "./src/context.tsx",
+    "./encode": "./src/encode.ts",
+    "./pipeline": "./src/pipeline.ts",
+    "./render": "./src/render.tsx",
+    "./storyboard-frames": "./src/storyboard-frames.ts",
+    "./storyboard-frames-png": "./src/storyboard-frames-png.ts",
+    "./storyboard-render": "./src/storyboard-render.ts"
   },
   "dependencies": {
     "@babulus/shared": "file:../shared"
