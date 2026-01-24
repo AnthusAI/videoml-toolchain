@@ -33,6 +33,10 @@ npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Next.js
+.next/
+*.tsbuildinfo
+
 # Babulus specific
 .babulus/config.yml
 .babulus/out/
