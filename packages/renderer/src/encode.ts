@@ -47,7 +47,16 @@ const spawnRunner: EncodeRunner = (command, args) =>
 export const encodeVideo = async (options: EncodeVideoOptions, runner: EncodeRunner = spawnRunner): Promise<void> => {
   const command = options.ffmpegPath ?? "ffmpeg";
   const args = buildFfmpegArgs(options);
-  const result = await runner(command, args);
+  let result: EncodeRunnerResult;
+  try {
+    result = await runner(command, args);
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err?.code === "ENOENT") {
+      throw new Error(`ffmpeg not found at ${command}`);
+    }
+    throw error;
+  }
   if (!result || result.code !== 0) {
     throw new Error(`ffmpeg failed with code ${result?.code ?? "unknown"}`);
   }

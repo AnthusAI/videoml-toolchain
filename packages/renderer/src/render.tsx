@@ -48,11 +48,21 @@ export type RenderFramesResult = {
 
 type BrowserAdapter = {
   newPage: () => Promise<PageAdapter>;
+  newContext?: (options: {
+    viewport: { width: number; height: number };
+    deviceScaleFactor?: number;
+  }) => Promise<BrowserContextAdapter>;
+  close?: () => Promise<void>;
+};
+
+type BrowserContextAdapter = {
+  newPage: () => Promise<PageAdapter>;
   close?: () => Promise<void>;
 };
 
 type PageAdapter = {
-  setViewport: (options: { width: number; height: number; deviceScaleFactor?: number }) => Promise<void>;
+  setViewport?: (options: { width: number; height: number; deviceScaleFactor?: number }) => Promise<void>;
+  setViewportSize?: (options: { width: number; height: number }) => Promise<void>;
   setContent: (html: string, options?: { waitUntil?: "load" | "domcontentloaded" | "networkidle" }) => Promise<void>;
   screenshot: (options: { type: "png"; omitBackground?: boolean }) => Promise<Buffer>;
   close?: () => Promise<void>;
@@ -60,6 +70,42 @@ type PageAdapter = {
 
 const ensureDir = (path: string) => {
   mkdirSync(path, { recursive: true });
+};
+
+const applyViewport = async (
+  page: PageAdapter,
+  options: { width: number; height: number; deviceScaleFactor?: number },
+): Promise<void> => {
+  if (page.setViewport) {
+    await page.setViewport(options);
+    return;
+  }
+  if (page.setViewportSize) {
+    await page.setViewportSize({ width: options.width, height: options.height });
+    return;
+  }
+  throw new Error("Page does not support viewport sizing.");
+};
+
+const createPage = async (
+  browser: BrowserAdapter,
+  options: { width: number; height: number; deviceScaleFactor?: number },
+): Promise<{ page: PageAdapter; closeContext?: () => Promise<void> }> => {
+  if (browser.newContext) {
+    const context = await browser.newContext({
+      viewport: { width: options.width, height: options.height },
+      deviceScaleFactor: options.deviceScaleFactor,
+    });
+    const page = await context.newPage();
+    return {
+      page,
+      closeContext: async () => {
+        await context.close?.();
+      },
+    };
+  }
+  const page = await browser.newPage();
+  return { page };
 };
 
 export const renderFrameToHtml = ({ component: Component, config, frame, inputProps }: RenderFrameOptions): string => {
@@ -125,8 +171,12 @@ export const renderFrameToPng = async ({
   const providedBrowser = browser ?? (await loadPlaywright()).chromium.launch();
   const activeBrowser = await providedBrowser;
   const shouldClose = autoClose ?? !browser;
-  const page = await activeBrowser.newPage();
-  await page.setViewport({
+  const { page, closeContext } = await createPage(activeBrowser, {
+    width: options.config.width,
+    height: options.config.height,
+    deviceScaleFactor,
+  });
+  await applyViewport(page, {
     width: options.config.width,
     height: options.config.height,
     deviceScaleFactor,
@@ -134,6 +184,7 @@ export const renderFrameToPng = async ({
   await page.setContent(html, { waitUntil: "load" });
   const buffer = await page.screenshot({ type: "png" });
   await page.close?.();
+  await closeContext?.();
   if (shouldClose) {
     await activeBrowser.close?.();
   }
@@ -164,8 +215,12 @@ export const renderFramesToPng = async ({
   const providedBrowser = browser ?? (await loadPlaywright()).chromium.launch();
   const activeBrowser = await providedBrowser;
   const shouldClose = autoClose ?? !browser;
-  const page = await activeBrowser.newPage();
-  await page.setViewport({
+  const { page, closeContext } = await createPage(activeBrowser, {
+    width: options.config.width,
+    height: options.config.height,
+    deviceScaleFactor,
+  });
+  await applyViewport(page, {
     width: options.config.width,
     height: options.config.height,
     deviceScaleFactor,
@@ -186,6 +241,7 @@ export const renderFramesToPng = async ({
   }
 
   await page.close?.();
+  await closeContext?.();
   if (shouldClose) {
     await activeBrowser.close?.();
   }
