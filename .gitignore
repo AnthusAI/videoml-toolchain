@@ -41,6 +41,9 @@ pnpm-debug.log*
 .babulus/config.yml
 .babulus/out/
 
+# Amplify
+amplify_outputs.json
+
 # IDE
 .vscode/
 .idea/
