@@ -38,6 +38,8 @@
     "render:pipeline": "tsx scripts/render-pipeline.ts",
     "render:storyboard": "tsx scripts/render-storyboard.ts",
     "render:storyboard:frames": "tsx scripts/render-storyboard-frames.ts",
+    "render:storyboard:png": "tsx scripts/render-storyboard-frames-png.ts",
+    "render:toolchain": "tsx scripts/render-toolchain.ts",
     "test": "npm run bdd"
   },
   "dependencies": {
@@ -50,6 +52,7 @@
     "yaml": "^2.5.1"
   },
   "devDependencies": {
+    "@aws-amplify/backend-cli": "^1.8.1",
     "@cucumber/cucumber": "^11.0.1",
     "@types/node": "^22.10.2",
     "@types/jsdom": "^21.1.7",
@@ -58,6 +61,7 @@
     "@testing-library/react": "^16.0.1",
     "c8": "^10.1.2",
     "jsdom": "^24.1.1",
+    "playwright": "1.45.0",
     "typescript": "^5.7.2"
   },
   "c8": {
