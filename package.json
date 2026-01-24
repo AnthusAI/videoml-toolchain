@@ -52,6 +52,7 @@
     "yaml": "^2.5.1"
   },
   "devDependencies": {
+    "@aws-amplify/backend": "^1.19.0",
     "@aws-amplify/backend-cli": "^1.8.1",
     "@cucumber/cucumber": "^11.0.1",
     "@types/node": "^22.10.2",
