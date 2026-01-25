@@ -45,6 +45,7 @@ export type ProcessingResult = {
     scriptArtifactKey?: string;
     timelineArtifactKey?: string;
     audioArtifactKey?: string;
+    mp4ArtifactKey?: string;
   };
   error?: string;
 };
@@ -399,4 +400,153 @@ export async function handleJobFailure(
 
     return { shouldRetry: false, retryCount };
   }
+}
+
+/**
+ * Process a render job
+ *
+ * Downloads generation artifacts, renders video frames with Playwright,
+ * encodes to MP4 with ffmpeg, and uploads result to S3.
+ */
+export async function processRenderJob(
+  job: any,
+  client: GraphQLClient,
+  storage: StorageClient,
+  workDir: string
+): Promise<ProcessingResult> {
+  const input: JobInput = job.inputJson ? JSON.parse(job.inputJson) : {};
+  const { videoId, generationRunId } = input;
+
+  if (!videoId || !generationRunId) {
+    throw new Error('Missing videoId or generationRunId in job input');
+  }
+
+  await emitJobEvent(client, job.id, job.orgId, 'status', 'Fetching generation run...', 0.0);
+
+  // Fetch Generation Run
+  const runRes = await client.models.GenerationRun.get({ id: generationRunId });
+  const run = runRes.data;
+  if (!run) {
+    throw new Error(`Generation run not found: ${generationRunId}`);
+  }
+
+  await emitJobEvent(client, job.id, job.orgId, 'status', 'Downloading artifacts...', 0.1);
+
+  // Download artifacts
+  const scriptPath = join(workDir, 'script.json');
+  const timelinePath = join(workDir, 'timeline.json');
+  const audioPath = join(workDir, 'audio.wav');
+  const framesDir = join(workDir, 'frames');
+  const outputMp4Path = join(workDir, 'output.mp4');
+
+  ensureDir(framesDir);
+
+  // Download script
+  if (run.scriptArtifactKey) {
+    console.log(`Downloading script from ${run.scriptArtifactKey}...`);
+    const { body } = await storage.downloadData({ path: run.scriptArtifactKey }).result;
+    const text = await body.text();
+    writeFileSync(scriptPath, text);
+  } else {
+    throw new Error('No script artifact found in generation run');
+  }
+
+  // Download timeline (optional)
+  if (run.timelineArtifactKey) {
+    console.log(`Downloading timeline from ${run.timelineArtifactKey}...`);
+    const { body } = await storage.downloadData({ path: run.timelineArtifactKey }).result;
+    const text = await body.text();
+    writeFileSync(timelinePath, text);
+  }
+
+  // Download audio (optional)
+  if (run.audioArtifactKey) {
+    console.log(`Downloading audio from ${run.audioArtifactKey}...`);
+    const { body } = await storage.downloadData({ path: run.audioArtifactKey }).result;
+    const blob = await body.blob();
+    writeFileSync(audioPath, Buffer.from(await blob.arrayBuffer()));
+  }
+
+  await emitJobEvent(client, job.id, job.orgId, 'status', 'Rendering video...', 0.2);
+
+  // Render video
+  // Import renderStoryboardVideo dynamically to avoid loading heavy dependencies in tests
+  const { renderStoryboardVideo } = await import('../packages/renderer/src/storyboard-render.js');
+
+  console.log('Rendering video with Playwright + ffmpeg...');
+  await renderStoryboardVideo({
+    script: JSON.parse(readFileSync(scriptPath, 'utf8')),
+    timeline: existsSync(timelinePath) ? JSON.parse(readFileSync(timelinePath, 'utf8')) : null,
+    audioPath: existsSync(audioPath) ? audioPath : undefined,
+    framesDir,
+    outputPath: outputMp4Path,
+    fps: 30,
+    width: 1280,
+    height: 720,
+    workers: 4, // Parallel frame rendering
+  });
+
+  if (!existsSync(outputMp4Path)) {
+    throw new Error('Render failed: output MP4 not created');
+  }
+
+  await emitJobEvent(client, job.id, job.orgId, 'status', 'Uploading video...', 0.8);
+
+  // Upload MP4
+  const runId = `render-${Date.now()}`;
+  const keyPrefix = `org/${job.orgId}/videos/${videoId}/renders/${runId}`;
+  console.log(`Uploading MP4 to ${keyPrefix}/output.mp4...`);
+
+  const fileContent = readFileSync(outputMp4Path);
+  const uploadResult = await storage.uploadData({
+    path: `${keyPrefix}/output.mp4`,
+    data: fileContent,
+    options: { contentType: 'video/mp4' },
+  }).result;
+
+  await emitJobEvent(client, job.id, job.orgId, 'status', 'Creating render run...', 0.9);
+
+  // Create RenderRun record
+  const { data: renderRun } = await client.models.RenderRun.create({
+    orgId: job.orgId,
+    videoId,
+    generationRunId,
+    status: 'succeeded',
+    mp4ArtifactKey: uploadResult.path,
+    createdAt: new Date().toISOString(),
+  });
+
+  // Record usage event
+  if (renderRun) {
+    try {
+      const script = JSON.parse(readFileSync(scriptPath, 'utf8'));
+      const durationSec = script.meta?.durationSeconds || 0;
+      const fps = script.meta?.fps || 30;
+      const totalFrames = Math.ceil(durationSec * fps);
+
+      await client.models.UsageEvent.create({
+        orgId: job.orgId,
+        videoId,
+        runId: renderRun.id,
+        provider: 'babulus-renderer',
+        unitType: 'frames',
+        quantity: totalFrames,
+        estimatedCost: totalFrames * 0.001, // $0.001 per frame
+        actualCost: totalFrames * 0.001,
+      });
+
+      console.log(`Recorded usage: ${totalFrames} frames`);
+    } catch (e) {
+      console.error('Failed to create render usage event:', e);
+    }
+  }
+
+  await emitJobEvent(client, job.id, job.orgId, 'status', 'Render complete!', 1.0);
+
+  return {
+    success: true,
+    artifactKeys: {
+      mp4ArtifactKey: uploadResult.path,
+    },
+  };
 }
