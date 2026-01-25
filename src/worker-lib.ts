@@ -51,19 +51,47 @@ export type ProcessingResult = {
 
 /**
  * Default DSL template used when no storyboard version exists
+ * Uses dry-run provider in test mode, OpenAI in production
  */
-export const DEFAULT_DSL = `
-import { composition, scene, voice } from '../../../src/dsl/index.ts';
+export const DEFAULT_DSL_PROD = `
+import { defineVideo } from 'babulus';
 
-export default composition('default-video', () => {
-  voice({ provider: 'openai' });
+export default defineVideo((video) => {
+  video.composition('default-video', (composition) => {
+    composition.voiceover({ provider: 'openai' });
 
-  scene('scene-1', 'Opening', () => {
-    voice.cue('Welcome to your new video.');
-    voice.cue('This is a generated voiceover.');
+    composition.scene('Opening', (scene) => {
+      scene.cue('Welcome', (cue) => {
+        cue.voice((voice) => {
+          voice.say('Welcome to your new video.');
+          voice.say('This is a generated voiceover.');
+        });
+      });
+    });
   });
 });
 `;
+
+export const DEFAULT_DSL_TEST = `
+import { defineVideo } from 'babulus';
+
+export default defineVideo((video) => {
+  video.composition('default-video', (composition) => {
+    composition.voiceover({ provider: 'dry-run' });
+
+    composition.scene('Opening', (scene) => {
+      scene.cue('Welcome', (cue) => {
+        cue.voice((voice) => {
+          voice.say('Welcome to your new video.');
+          voice.say('This is a generated voiceover.');
+        });
+      });
+    });
+  });
+});
+`;
+
+export const DEFAULT_DSL = process.env.NODE_ENV === 'test' ? DEFAULT_DSL_TEST : DEFAULT_DSL_PROD;
 
 /**
  * Claim the next available queued job
