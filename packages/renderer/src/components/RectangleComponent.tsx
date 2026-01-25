@@ -38,9 +38,21 @@ export function RectangleComponent(props: RectangleProps) {
   // Priority: gradient > image > color > styles.background > transparent
   const background = gradient || image || color || styles.background || "transparent";
 
+  // When width/height are percentages and x/y are 0, use inset positioning for better compatibility
+  const useInsetPositioning = (width === "100%" || width === "100vw") &&
+                               (height === "100%" || height === "100vh") &&
+                               x === 0 && y === 0;
+
   return (
     <div
-      style={{
+      style={useInsetPositioning ? {
+        position: "absolute",
+        inset: 0,
+        background,
+        opacity: styles._computedOpacity ?? 1,
+        borderRadius,
+        border,
+      } : {
         position: "absolute",
         left: x,
         top: y,

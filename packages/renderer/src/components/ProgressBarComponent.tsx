@@ -25,8 +25,11 @@ export function ProgressBarComponent(props: ProgressBarProps) {
     position: "absolute",
     [position]: 0,
     left: 0,
-    right: 0,
+    width: "100%",
     height: `${height}px`,
+    maxHeight: `${height}px`,
+    minHeight: `${height}px`,
+    overflow: "hidden",
     background: backgroundColor,
     opacity: styles._computedOpacity ?? 1,
   };
@@ -35,6 +38,9 @@ export function ProgressBarComponent(props: ProgressBarProps) {
     <div style={style}>
       <div
         style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
           height: "100%",
           width: `${Math.min(100, Math.max(0, progress))}%`,
           background: color,

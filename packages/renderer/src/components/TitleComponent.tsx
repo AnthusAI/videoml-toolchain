@@ -46,6 +46,7 @@ export function TitleComponent(props: TitleProps) {
         textAlign: textAlign ?? styles.textAlign ?? "left",
         fontFamily: styles.fontFamily ?? "ui-sans-serif, system-ui, sans-serif",
         opacity: styles._computedOpacity ?? 1,
+        whiteSpace: "nowrap",
       }}
     >
       {displayText}
