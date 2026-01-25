@@ -39,8 +39,10 @@ export type SceneSpec = {
   title: string;
   time?: TimeRange;
   items: Array<CueSpec | PauseSpec>;
-  markup?: SemanticMarkup;
-  components?: ComponentSpec[]; // Visual components to render
+  markup?: SemanticMarkup; // Deprecated - use styles instead
+  styles?: VisualStyles; // Scene-level styles (cascade to layers/components)
+  layers?: LayerSpec[]; // Grouped components with shared styles
+  components?: ComponentSpec[]; // Visual components to render (backward compat)
 };
 
 export type PronunciationLexemeSpec = {
@@ -159,11 +161,28 @@ export type ComponentBindings = {
   [propName: string]: DataReference;
 };
 
+// Visual styles (cascadable properties)
+export type VisualStyles = {
+  // Color & appearance
+  background?: string;
+  color?: string;
+  opacity?: number; // 0-1, multiplicative when cascading
+
+  // Typography
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: number | string;
+  textAlign?: "left" | "center" | "right";
+
+  // Future: transforms, filters, etc.
+};
+
 export type ComponentSpec = {
-  id: string; // Unique ID within scene
+  id: string; // Unique ID within scene/layer
   type: string | React.ComponentType<any>; // Component type or React element
   props?: Record<string, unknown>; // Static props
   bindings?: ComponentBindings; // Data bindings to scene/cue
+  styles?: VisualStyles; // Component-level styles (cascade from layer/scene)
   zIndex?: number; // Layer ordering (higher = front)
   visible?: boolean; // Show/hide
   timing?: {
@@ -171,6 +190,20 @@ export type ComponentSpec = {
     startSec?: number;
     endSec?: number;
   };
+};
+
+// Layer specification (groups components with shared styles/timing)
+export type LayerSpec = {
+  id: string; // Unique ID within scene
+  styles?: VisualStyles; // Layer-level styles (cascade from scene)
+  timing?: {
+    // When to show layer
+    startSec?: number;
+    endSec?: number;
+  };
+  visible?: boolean; // Show/hide entire layer
+  zIndex?: number; // Base zIndex for layer
+  components: ComponentSpec[]; // Components in this layer
 };
 
 export type VideoFileSpec = {

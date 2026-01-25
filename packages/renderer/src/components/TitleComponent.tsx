@@ -1,5 +1,6 @@
 import React from "react";
 import type { ScriptScene } from "@babulus/shared";
+import type { CascadedStyles } from "../styles/cascade.ts";
 
 export type TitleProps = {
   text?: string; // Explicit text
@@ -9,21 +10,23 @@ export type TitleProps = {
   color?: string;
   textAlign?: "left" | "center" | "right";
   position?: { x?: number | string; y?: number | string };
-  // Scene/frame context injected by renderer
+  // Injected by renderer
   scene?: ScriptScene;
   frame?: number;
+  styles?: CascadedStyles;
 };
 
 export function TitleComponent(props: TitleProps) {
   const {
     text,
     binding,
-    fontSize = 48,
-    fontWeight = 700,
-    color = "#ffffff",
-    textAlign = "left",
+    fontSize,
+    fontWeight,
+    color,
+    textAlign,
     position = { x: 48, y: 48 },
     scene,
+    styles = {} as CascadedStyles,
   } = props;
 
   // Resolve text from binding or explicit prop
@@ -37,11 +40,12 @@ export function TitleComponent(props: TitleProps) {
         position: "absolute",
         left: position.x,
         top: position.y,
-        fontSize,
-        fontWeight,
-        color,
-        textAlign,
-        fontFamily: "ui-sans-serif, system-ui, sans-serif",
+        fontSize: fontSize ?? styles.fontSize ?? 48,
+        fontWeight: fontWeight ?? styles.fontWeight ?? 700,
+        color: color ?? styles.color ?? "#ffffff",
+        textAlign: textAlign ?? styles.textAlign ?? "left",
+        fontFamily: styles.fontFamily ?? "ui-sans-serif, system-ui, sans-serif",
+        opacity: styles._computedOpacity ?? 1,
       }}
     >
       {displayText}

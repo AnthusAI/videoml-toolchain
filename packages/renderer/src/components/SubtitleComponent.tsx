@@ -1,5 +1,6 @@
 import React from "react";
 import type { ScriptCue } from "@babulus/shared";
+import type { CascadedStyles } from "../styles/cascade.ts";
 
 export type SubtitleProps = {
   text?: string; // Explicit text
@@ -9,21 +10,23 @@ export type SubtitleProps = {
   color?: string;
   textAlign?: "left" | "center" | "right";
   position?: { x?: number | string; y?: number | string };
-  // Cue context injected by renderer
+  // Injected by renderer
   cue?: ScriptCue;
   frame?: number;
+  styles?: CascadedStyles;
 };
 
 export function SubtitleComponent(props: SubtitleProps) {
   const {
     text,
     binding = "cue.text", // Default to cue text
-    fontSize = 20,
-    fontWeight = 400,
-    color = "#cbd5f5",
-    textAlign = "left",
+    fontSize,
+    fontWeight,
+    color,
+    textAlign,
     position = { x: 48, y: 120 },
     cue,
+    styles = {} as CascadedStyles,
   } = props;
 
   // Resolve text from binding or explicit prop
@@ -37,11 +40,12 @@ export function SubtitleComponent(props: SubtitleProps) {
         position: "absolute",
         left: position.x,
         top: position.y,
-        fontSize,
-        fontWeight,
-        color,
-        textAlign,
-        fontFamily: "ui-sans-serif, system-ui, sans-serif",
+        fontSize: fontSize ?? styles.fontSize ?? 20,
+        fontWeight: fontWeight ?? styles.fontWeight ?? 400,
+        color: color ?? styles.color ?? "#cbd5f5",
+        textAlign: textAlign ?? styles.textAlign ?? "left",
+        fontFamily: styles.fontFamily ?? "ui-sans-serif, system-ui, sans-serif",
+        opacity: styles._computedOpacity ?? 1,
       }}
     >
       {displayText}

@@ -1,4 +1,5 @@
 import React from "react";
+import type { CascadedStyles } from "../styles/cascade.ts";
 
 export type ProgressBarProps = {
   position?: "top" | "bottom";
@@ -7,6 +8,7 @@ export type ProgressBarProps = {
   backgroundColor?: string;
   // Injected by renderer
   progress?: number; // 0-100
+  styles?: CascadedStyles;
 };
 
 export function ProgressBarComponent(props: ProgressBarProps) {
@@ -16,6 +18,7 @@ export function ProgressBarComponent(props: ProgressBarProps) {
     color = "linear-gradient(90deg, #38bdf8, #818cf8)",
     backgroundColor = "rgba(148,163,184,0.25)",
     progress = 0,
+    styles = {} as CascadedStyles,
   } = props;
 
   const style: React.CSSProperties = {
@@ -25,6 +28,7 @@ export function ProgressBarComponent(props: ProgressBarProps) {
     right: 0,
     height,
     background: backgroundColor,
+    opacity: styles._computedOpacity ?? 1,
   };
 
   return (

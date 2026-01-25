@@ -150,6 +150,9 @@ class SceneBuilder {
   private items: Array<CueSpec | PauseSpec> = [];
   private audioPlan: AudioPlan;
   private _markup?: SemanticMarkup;
+  private _styles?: VisualStyles;
+  private _layers: LayerSpec[] = [];
+  private _components: ComponentSpec[] = [];
 
   constructor(name: string, opts: Partial<SceneSpec>, audioPlan: AudioPlan) {
     this.id = opts.id ?? slugify(name);
@@ -157,6 +160,9 @@ class SceneBuilder {
     this.time = opts.time;
     this.audioPlan = audioPlan;
     this._markup = opts.markup;
+    this._styles = opts.styles;
+    this._layers = opts.layers ?? [];
+    this._components = opts.components ?? [];
   }
 
   /**
@@ -233,6 +239,85 @@ class SceneBuilder {
     this._markup = { ...(this._markup ?? {}), ...markup };
   }
 
+  /**
+   * Set scene-level styles that cascade to layers and components.
+   */
+  styles(styles: VisualStyles): void {
+    this._styles = { ...(this._styles ?? {}), ...styles };
+  }
+
+  /**
+   * Create a layer to group components with shared styles and timing.
+   */
+  layer(
+    id: string,
+    opts: {
+      styles?: VisualStyles;
+      timing?: { startSec?: number; endSec?: number };
+      visible?: boolean;
+      zIndex?: number;
+    },
+    fn: (layer: LayerBuilder) => void,
+  ): void {
+    const layerSpec: LayerSpec = {
+      id,
+      styles: opts.styles,
+      timing: opts.timing,
+      visible: opts.visible,
+      zIndex: opts.zIndex,
+      components: [],
+    };
+
+    const builder = new LayerBuilder(layerSpec);
+    fn(builder);
+
+    this._layers.push(layerSpec);
+  }
+
+  /**
+   * Add a rectangle component directly to the scene.
+   */
+  rectangle(props: Record<string, unknown>): void {
+    this._components.push({
+      id: `rectangle-${this._components.length}`,
+      type: "Rectangle",
+      props,
+    });
+  }
+
+  /**
+   * Add a title component directly to the scene.
+   */
+  title(props: Record<string, unknown>): void {
+    this._components.push({
+      id: `title-${this._components.length}`,
+      type: "Title",
+      props,
+    });
+  }
+
+  /**
+   * Add a subtitle component directly to the scene.
+   */
+  subtitle(props: Record<string, unknown>): void {
+    this._components.push({
+      id: `subtitle-${this._components.length}`,
+      type: "Subtitle",
+      props,
+    });
+  }
+
+  /**
+   * Add a progress bar component directly to the scene.
+   */
+  progressBar(props?: Record<string, unknown>): void {
+    this._components.push({
+      id: `progress-${this._components.length}`,
+      type: "ProgressBar",
+      props: props ?? {},
+    });
+  }
+
   toSpec(): SceneSpec {
     return {
       id: this.id,
@@ -240,7 +325,81 @@ class SceneBuilder {
       time: this.time,
       items: this.items,
       markup: this._markup,
+      styles: this._styles,
+      layers: this._layers.length > 0 ? this._layers : undefined,
+      components: this._components.length > 0 ? this._components : undefined,
     };
+  }
+}
+
+/**
+ * Builder for creating layers (groups of components with shared styles).
+ */
+class LayerBuilder {
+  constructor(private spec: LayerSpec) {}
+
+  /**
+   * Add a rectangle component to this layer.
+   */
+  rectangle(props: Record<string, unknown>): this {
+    this.spec.components.push({
+      id: `rectangle-${this.spec.components.length}`,
+      type: "Rectangle",
+      props,
+    });
+    return this;
+  }
+
+  /**
+   * Add a title component to this layer.
+   */
+  title(props: Record<string, unknown>): this {
+    this.spec.components.push({
+      id: `title-${this.spec.components.length}`,
+      type: "Title",
+      props,
+    });
+    return this;
+  }
+
+  /**
+   * Add a subtitle component to this layer.
+   */
+  subtitle(props: Record<string, unknown>): this {
+    this.spec.components.push({
+      id: `subtitle-${this.spec.components.length}`,
+      type: "Subtitle",
+      props,
+    });
+    return this;
+  }
+
+  /**
+   * Add a progress bar component to this layer.
+   */
+  progressBar(props?: Record<string, unknown>): this {
+    this.spec.components.push({
+      id: `progress-${this.spec.components.length}`,
+      type: "ProgressBar",
+      props: props ?? {},
+    });
+    return this;
+  }
+
+  /**
+   * Add a custom component to this layer.
+   */
+  component(
+    id: string,
+    type: string | React.ComponentType<any>,
+    props?: Record<string, unknown>,
+  ): this {
+    this.spec.components.push({
+      id,
+      type,
+      props: props ?? {},
+    });
+    return this;
   }
 }
 
