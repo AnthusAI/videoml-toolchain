@@ -8,12 +8,12 @@ import {
 } from "./render.js";
 import type { VideoConfig } from "./context.js";
 
-export type RenderVideoOptions = {
-  component: React.ComponentType<Record<string, unknown>>;
+export type RenderVideoOptions<TInputProps extends Record<string, unknown> = Record<string, unknown>> = {
+  component: React.ComponentType<TInputProps>;
   config: VideoConfig;
   outputPath: string;
   framesDir: string;
-  inputProps?: Record<string, unknown>;
+  inputProps?: TInputProps;
   audioPath?: string | null;
   framePattern?: string;
   startFrame?: number;
@@ -34,7 +34,7 @@ export type RenderVideoResult = {
   outputPath: string;
 };
 
-export const renderVideo = async ({
+export const renderVideo = async <TInputProps extends Record<string, unknown> = Record<string, unknown>>({
   component,
   config,
   outputPath,
@@ -53,7 +53,7 @@ export const renderVideo = async ({
   renderFrames,
   encode,
   encodeRunner,
-}: RenderVideoOptions): Promise<RenderVideoResult> => {
+}: RenderVideoOptions<TInputProps>): Promise<RenderVideoResult> => {
   const render = renderFrames ?? renderFramesToPng;
   const encoder = encode ?? encodeVideo;
   const frameOptions: RenderFramesPngOptions = {

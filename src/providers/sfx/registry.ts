@@ -11,7 +11,7 @@ export function getSfxProvider(name: string, config: Config): SFXProvider {
   if (name === "elevenlabs") {
     const cfg = getProviderConfig(config, "elevenlabs");
     return new ElevenLabsSFXProvider({
-      apiKey: String(cfg.api_key ?? ""),
+      apiKey: process.env.ELEVENLABS_API_KEY || String(cfg.api_key ?? ""),
       baseUrl: String(cfg.base_url ?? "https://api.elevenlabs.io"),
       modelId: String(cfg.sfx_model_id ?? "eleven_text_to_sound_v2"),
       promptInfluence: cfg.sfx_prompt_influence != null ? Number(cfg.sfx_prompt_influence) : null,

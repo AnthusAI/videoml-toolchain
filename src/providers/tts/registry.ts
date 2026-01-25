@@ -19,7 +19,7 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
   if (name === "openai") {
     const cfg = getProviderConfig(config, "openai");
     return new OpenAITTSProvider({
-      apiKey: String(cfg.api_key ?? ""),
+      apiKey: process.env.OPENAI_API_KEY || String(cfg.api_key ?? ""),
       baseUrl: String(cfg.base_url ?? "https://api.openai.com/v1/audio/speech"),
       defaultModel: String(cfg.model ?? "gpt-4o-mini-tts"),
       defaultVoice: String(cfg.voice ?? "alloy"),
@@ -43,7 +43,7 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
       }
     }
     return new ElevenLabsTTSProvider({
-      apiKey: String(cfg.api_key ?? ""),
+      apiKey: process.env.ELEVENLABS_API_KEY || String(cfg.api_key ?? ""),
       voiceId: String(cfg.voice_id ?? ""),
       modelId: String(cfg.model_id ?? "eleven_multilingual_v2"),
       baseUrl: String(cfg.base_url ?? "https://api.elevenlabs.io"),
@@ -55,7 +55,7 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
   if (name === "aws" || name === "aws-polly") {
     const cfg = getProviderConfig(config, "aws_polly");
     return new PollyTTSProvider({
-      region: String(cfg.region ?? "us-east-1"),
+      region: process.env.AWS_POLLY_REGION || String(cfg.region ?? "us-east-1"),
       voiceId: String(cfg.voice_id ?? "Joanna"),
       engine: String(cfg.engine ?? "standard"),
       languageCode: cfg.language_code ? String(cfg.language_code) : null,
@@ -64,8 +64,8 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
   if (name === "azure" || name === "azure-speech") {
     const cfg = getProviderConfig(config, "azure_speech");
     return new AzureSpeechTTSProvider({
-      apiKey: String(cfg.api_key ?? ""),
-      region: String(cfg.region ?? ""),
+      apiKey: process.env.AZURE_SPEECH_KEY || String(cfg.api_key ?? ""),
+      region: process.env.AZURE_SPEECH_REGION || String(cfg.region ?? ""),
       voiceName: String(cfg.voice ?? "en-US-JennyNeural"),
     });
   }

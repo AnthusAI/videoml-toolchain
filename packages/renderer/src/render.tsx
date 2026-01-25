@@ -7,7 +7,7 @@ import { clamp } from "./math.js";
 import { RendererProvider, type VideoConfig } from "./context.js";
 
 export type RenderFrameOptions = {
-  component: React.ComponentType<Record<string, unknown>>;
+  component: React.ComponentType<any>;
   config: VideoConfig;
   frame: number;
   inputProps?: Record<string, unknown>;
@@ -24,7 +24,7 @@ export type RenderFramePngOptions = RenderFrameOptions & {
   autoClose?: boolean;
 };
 
-export type RenderFramesPngOptions = RenderFrameOptions & {
+export type RenderFramesPngOptions = Omit<RenderFrameOptions, "frame"> & {
   outDir: string;
   startFrame?: number;
   endFrame?: number;
@@ -36,7 +36,7 @@ export type RenderFramesPngOptions = RenderFrameOptions & {
   onFrame?: (frame: number, path: string) => void;
 };
 
-export type RenderFramesHtmlOptions = RenderFrameOptions & {
+export type RenderFramesHtmlOptions = Omit<RenderFrameOptions, "frame"> & {
   outDir: string;
   startFrame?: number;
   endFrame?: number;

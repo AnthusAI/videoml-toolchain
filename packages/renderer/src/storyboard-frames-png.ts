@@ -5,7 +5,7 @@ import { StoryboardRenderer } from "./storyboard.js";
 
 export type RenderStoryboardFramesPngOptions = Omit<
   RenderFramesPngOptions,
-  "component" | "config" | "inputProps" | "frame"
+  "component" | "config" | "inputProps"
 > & {
   script: ScriptData;
   timeline?: TimelineData | null;

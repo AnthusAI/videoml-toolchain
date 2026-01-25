@@ -11,7 +11,7 @@ export function getMusicProvider(name: string, config: Config): MusicProvider {
   if (name === "elevenlabs") {
     const cfg = getProviderConfig(config, "elevenlabs");
     return new ElevenLabsMusicProvider({
-      apiKey: String(cfg.api_key ?? ""),
+      apiKey: process.env.ELEVENLABS_API_KEY || String(cfg.api_key ?? ""),
       baseUrl: String(cfg.base_url ?? "https://api.elevenlabs.io"),
       modelId: String(cfg.music_model_id ?? "music_v1"),
     });
