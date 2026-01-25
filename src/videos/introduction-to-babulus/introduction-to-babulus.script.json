@@ -5,6 +5,14 @@
       "title": "Welcome",
       "startSec": 0.5,
       "endSec": 7.809090909090909,
+      "markup": {
+        "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        "textAlign": "center",
+        "titleColor": "#ffffff",
+        "titleSize": 56,
+        "subtitleColor": "#e0e7ff",
+        "subtitleSize": 24
+      },
       "cues": [
         {
           "id": "opening",
@@ -21,6 +29,13 @@
       "title": "Key Features",
       "startSec": 7.809090909090909,
       "endSec": 28.18181818181818,
+      "markup": {
+        "background": "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+        "titleColor": "#ffffff",
+        "titleSize": 48,
+        "subtitleColor": "#fff5f5",
+        "subtitleSize": 22
+      },
       "cues": [
         {
           "id": "power-of-typescript",
@@ -28,6 +43,9 @@
           "startSec": 7.809090909090909,
           "endSec": 17.563636363636363,
           "text": "Babulus combines the power of TypeScript with AI to streamline video production. Write your video content as code, and we handle voiceover generation, timing, and rendering.",
+          "markup": {
+            "titleColor": "#fff5f5"
+          },
           "bullets": []
         },
         {
@@ -36,6 +54,9 @@
           "startSec": 18.063636363636363,
           "endSec": 28.18181818181818,
           "text": "Use scenes to organize your content, cues to structure narration, and beats to control timing. Add background music, sound effects, and visual components to enhance your videos.",
+          "markup": {
+            "titleColor": "#fffbeb"
+          },
           "bullets": []
         }
       ]
@@ -45,6 +66,13 @@
       "title": "Getting Started",
       "startSec": 28.18181818181818,
       "endSec": 50.1090909090909,
+      "markup": {
+        "background": "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+        "titleColor": "#ffffff",
+        "titleSize": 48,
+        "subtitleColor": "#e0f7ff",
+        "subtitleSize": 22
+      },
       "cues": [
         {
           "id": "how-to-begin",
@@ -69,6 +97,13 @@
       "title": "Conclusion",
       "startSec": 50.1090909090909,
       "endSec": 61.41818181818181,
+      "markup": {
+        "background": "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+        "titleColor": "#ffffff",
+        "titleSize": 48,
+        "subtitleColor": "#e0fff5",
+        "subtitleSize": 22
+      },
       "cues": [
         {
           "id": "call-to-action",
