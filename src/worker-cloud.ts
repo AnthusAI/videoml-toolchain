@@ -11,8 +11,6 @@ import { ensureDir } from './util.js';
 import { loadUsageEntries } from './telemetry.js';
 // @ts-ignore
 import { renderStoryboardVideo } from '../packages/renderer/src/storyboard-render.js';
-// @ts-ignore
-import type { StudioSchema } from '../apps/studio-web/amplify/data/resource.js';
 
 // Polyfill for WebSocket if needed (Amplify Data uses WS for subscriptions, but we use list/HTTP mostly)
 import { WebSocket } from 'ws';
@@ -24,7 +22,7 @@ const outputs = JSON.parse(readFileSync('amplify_outputs.json', 'utf8'));
 
 Amplify.configure(outputs);
 
-const client = generateClient<StudioSchema>({
+const client = generateClient<any>({
   authMode: 'userPool'
 });
 

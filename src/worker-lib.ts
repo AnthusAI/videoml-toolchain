@@ -11,7 +11,6 @@
  * - Progress tracking via JobEvents
  */
 
-import type { StudioSchema } from '../apps/studio-web/amplify/data/resource.js';
 import { generateComposition } from './generate.js';
 import { loadVideoFile } from './dsl/load.js';
 import { ensureDir } from './util.js';
@@ -20,9 +19,7 @@ import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
 // Type definitions
-export type GraphQLClient = ReturnType<
-  typeof import('aws-amplify/data').generateClient<StudioSchema>
->;
+export type GraphQLClient = any;
 
 export type StorageClient = {
   uploadData: (params: {

@@ -1,0 +1,91 @@
+{
+  "scenes": [
+    {
+      "id": "welcome",
+      "title": "Welcome",
+      "startSec": 0.5,
+      "endSec": 7.809090909090909,
+      "cues": [
+        {
+          "id": "opening",
+          "label": "Opening",
+          "startSec": 0.5,
+          "endSec": 7.809090909090909,
+          "text": "Welcome to Babulus, the AI-powered video creation platform. Create professional videos using code, with automatic voiceovers and scene composition.",
+          "bullets": []
+        }
+      ]
+    },
+    {
+      "id": "key-features",
+      "title": "Key Features",
+      "startSec": 7.809090909090909,
+      "endSec": 28.18181818181818,
+      "cues": [
+        {
+          "id": "power-of-typescript",
+          "label": "Power of TypeScript",
+          "startSec": 7.809090909090909,
+          "endSec": 17.563636363636363,
+          "text": "Babulus combines the power of TypeScript with AI to streamline video production. Write your video content as code, and we handle voiceover generation, timing, and rendering.",
+          "bullets": []
+        },
+        {
+          "id": "tooling-features",
+          "label": "Tooling Features",
+          "startSec": 18.063636363636363,
+          "endSec": 28.18181818181818,
+          "text": "Use scenes to organize your content, cues to structure narration, and beats to control timing. Add background music, sound effects, and visual components to enhance your videos.",
+          "bullets": []
+        }
+      ]
+    },
+    {
+      "id": "getting-started",
+      "title": "Getting Started",
+      "startSec": 28.18181818181818,
+      "endSec": 50.1090909090909,
+      "cues": [
+        {
+          "id": "how-to-begin",
+          "label": "How to Begin",
+          "startSec": 28.18181818181818,
+          "endSec": 39.127272727272725,
+          "text": "Getting started is simple. Create a project, upload your assets, and start writing your video script. The editor provides real-time preview, syntax highlighting, and instant feedback as you build.",
+          "bullets": []
+        },
+        {
+          "id": "workflow",
+          "label": "Workflow",
+          "startSec": 39.627272727272725,
+          "endSec": 50.1090909090909,
+          "text": "When you are ready, click Generate to process your script and create the final video. You can iterate quickly, making changes and regenerating until your video is perfect.",
+          "bullets": []
+        }
+      ]
+    },
+    {
+      "id": "conclusion",
+      "title": "Conclusion",
+      "startSec": 50.1090909090909,
+      "endSec": 61.41818181818181,
+      "cues": [
+        {
+          "id": "call-to-action",
+          "label": "Call to Action",
+          "startSec": 50.1090909090909,
+          "endSec": 61.41818181818181,
+          "text": "Whether you are creating marketing content, educational videos, or product demos, Babulus makes it fast and easy. Start creating your first video today and experience the future of video production.",
+          "bullets": []
+        }
+      ]
+    }
+  ],
+  "posterTimeSec": 2,
+  "fps": 30,
+  "meta": {
+    "fps": 30,
+    "width": 1280,
+    "height": 720
+  }
+}
