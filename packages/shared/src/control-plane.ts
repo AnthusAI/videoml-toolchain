@@ -860,6 +860,34 @@ export const listPublishedVideos = (
   });
 };
 
+export const getPublishedVideo = (
+  store: ControlPlaneStore,
+  publishedVideoId: string,
+  activeOrgId: string,
+): PublishedVideo | null => {
+  const video = store.publishedVideos.find(v => v.id === publishedVideoId);
+  if (!video || video.orgId !== activeOrgId) {
+    return null;
+  }
+  return video;
+};
+
+export const updatePublishedVideo = (
+  store: ControlPlaneStore,
+  publishedVideoId: string,
+  updates: Partial<PublishedVideo>,
+  activeOrgId: string,
+): PublishedVideo => {
+  const video = getPublishedVideo(store, publishedVideoId, activeOrgId);
+  if (!video) {
+    throw new Error(`Published video ${publishedVideoId} not found or access denied`);
+  }
+
+  const updated: PublishedVideo = { ...video, ...updates, id: video.id, orgId: video.orgId };
+  store.publishedVideos = store.publishedVideos.map((v) => (v.id === publishedVideoId ? updated : v));
+  return updated;
+};
+
 export const listRenderRuns = (
   store: ControlPlaneStore,
   activeOrgId: string,
