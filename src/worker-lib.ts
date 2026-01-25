@@ -334,7 +334,7 @@ export async function processGenerationJob(
 export async function updateJobStatus(
   client: GraphQLClient,
   jobId: string,
-  status: 'succeeded' | 'failed',
+  status: 'succeeded' | 'failed' | 'queued',
   failureReason?: string
 ): Promise<void> {
   const updateData: any = {
@@ -347,4 +347,56 @@ export async function updateJobStatus(
   }
 
   await client.models.Job.update(updateData);
+}
+
+/**
+ * Handle job failure with automatic retry logic
+ *
+ * If retryCount < maxRetries: increment retryCount and re-queue job
+ * If retryCount >= maxRetries: mark as permanently failed
+ *
+ * Uses exponential backoff: delay = 2^retryCount minutes
+ */
+export async function handleJobFailure(
+  client: GraphQLClient,
+  jobId: string,
+  failureReason: string
+): Promise<{ shouldRetry: boolean; retryCount: number }> {
+  // Fetch current job state
+  const jobRes = await client.models.Job.get({ id: jobId });
+  const job = jobRes.data;
+
+  if (!job) {
+    throw new Error(`Job not found: ${jobId}`);
+  }
+
+  const retryCount = (job.retryCount || 0) + 1;
+  const maxRetries = job.maxRetries || 3;
+
+  if (retryCount < maxRetries) {
+    // Re-queue for retry
+    console.log(`Job ${jobId} failed, retrying (${retryCount}/${maxRetries})...`);
+
+    await client.models.Job.update({
+      id: jobId,
+      status: 'queued',
+      retryCount,
+      failureReason: `Retry ${retryCount}/${maxRetries}: ${failureReason}`,
+      claimedByAgentId: null, // Clear claim so another worker can pick it up
+    });
+
+    return { shouldRetry: true, retryCount };
+  } else {
+    // Permanent failure
+    console.error(`Job ${jobId} failed permanently after ${retryCount} attempts`);
+
+    await client.models.Job.update({
+      id: jobId,
+      status: 'failed',
+      retryCount,
+      failureReason: `Failed after ${retryCount} attempts: ${failureReason}`,
+    });
+
+    return { shouldRetry: false, retryCount };
+  }
 }
