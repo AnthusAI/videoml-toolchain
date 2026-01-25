@@ -40,6 +40,7 @@ export type SceneSpec = {
   time?: TimeRange;
   items: Array<CueSpec | PauseSpec>;
   markup?: SemanticMarkup;
+  components?: ComponentSpec[]; // Visual components to render
 };
 
 export type PronunciationLexemeSpec = {
@@ -145,6 +146,31 @@ export type SeriesSpec = {
   id: string;
   episodes: Array<{ id: string; props?: Record<string, unknown> }>;
   compositionId?: string;
+};
+
+// Component system types
+export type DataReference =
+  | `scene.${string}` // scene.title, scene.id
+  | `cue.${string}` // cue.text, cue.label
+  | `frame.${string}` // frame.number, frame.time
+  | string; // Literal value
+
+export type ComponentBindings = {
+  [propName: string]: DataReference;
+};
+
+export type ComponentSpec = {
+  id: string; // Unique ID within scene
+  type: string | React.ComponentType<any>; // Component type or React element
+  props?: Record<string, unknown>; // Static props
+  bindings?: ComponentBindings; // Data bindings to scene/cue
+  zIndex?: number; // Layer ordering (higher = front)
+  visible?: boolean; // Show/hide
+  timing?: {
+    // When to show
+    startSec?: number;
+    endSec?: number;
+  };
 };
 
 export type VideoFileSpec = {
