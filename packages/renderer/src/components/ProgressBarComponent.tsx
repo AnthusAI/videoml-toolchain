@@ -26,7 +26,7 @@ export function ProgressBarComponent(props: ProgressBarProps) {
     [position]: 0,
     left: 0,
     right: 0,
-    height,
+    height: `${height}px`,
     background: backgroundColor,
     opacity: styles._computedOpacity ?? 1,
   };
