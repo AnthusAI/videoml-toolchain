@@ -1,0 +1,200 @@
+{
+  "items": [
+    {
+      "type": "lead_in",
+      "startSec": 0,
+      "endSec": 0.5,
+      "seconds": 0.5
+    },
+    {
+      "type": "tts",
+      "sceneId": "blank-scene",
+      "cueId": "blank-cue",
+      "startSec": 0.5,
+      "endSec": 3.409090909090909,
+      "segments": [
+        {
+          "type": "tts",
+          "startSec": 0.5,
+          "endSec": 3.409090909090909,
+          "text": "This is a blank scene with transparent background.",
+          "segmentPath": "/Users/ryan.porter/Projects/Babulus/.babulus/out/cascading-styles-demo/env/development/segments/blank-scene--blank-cue--tts--de0fcd2ef137--1.wav",
+          "durationSec": 2.909090909090909,
+          "rawDurationSec": 2.909090909090909,
+          "trimEndSec": 0
+        }
+      ]
+    },
+    {
+      "type": "tts",
+      "sceneId": "layered-scene",
+      "cueId": "intro",
+      "startSec": 3.409090909090909,
+      "endSec": 9.527272727272727,
+      "segments": [
+        {
+          "type": "tts",
+          "startSec": 3.409090909090909,
+          "endSec": 5.954545454545455,
+          "text": "This scene demonstrates cascading styles and layers.",
+          "segmentPath": "/Users/ryan.porter/Projects/Babulus/.babulus/out/cascading-styles-demo/env/development/segments/layered-scene--intro--tts--92cd52d12e27--1.wav",
+          "durationSec": 2.5454545454545454,
+          "rawDurationSec": 2.5454545454545454,
+          "trimEndSec": 0
+        },
+        {
+          "type": "pause",
+          "startSec": 5.954545454545455,
+          "endSec": 6.254545454545455,
+          "seconds": 0.3
+        },
+        {
+          "type": "tts",
+          "startSec": 6.254545454545455,
+          "endSec": 9.527272727272727,
+          "text": "Notice the gradient background, layered text, and progress bar.",
+          "segmentPath": "/Users/ryan.porter/Projects/Babulus/.babulus/out/cascading-styles-demo/env/development/segments/layered-scene--intro--tts--0a485cfe070b--1.wav",
+          "durationSec": 3.2727272727272725,
+          "rawDurationSec": 3.2727272727272725,
+          "trimEndSec": 0
+        }
+      ]
+    },
+    {
+      "type": "tts",
+      "sceneId": "opacity-demo",
+      "cueId": "opacity-explanation",
+      "startSec": 9.527272727272727,
+      "endSec": 14.918181818181818,
+      "segments": [
+        {
+          "type": "tts",
+          "startSec": 9.527272727272727,
+          "endSec": 11.709090909090909,
+          "text": "Opacity multiplies down through the cascade.",
+          "segmentPath": "/Users/ryan.porter/Projects/Babulus/.babulus/out/cascading-styles-demo/env/development/segments/opacity-demo--opacity-explanation--tts--4232663c2eab--1.wav",
+          "durationSec": 2.1818181818181817,
+          "rawDurationSec": 2.1818181818181817,
+          "trimEndSec": 0
+        },
+        {
+          "type": "pause",
+          "startSec": 11.709090909090909,
+          "endSec": 12.00909090909091,
+          "seconds": 0.3
+        },
+        {
+          "type": "tts",
+          "startSec": 12.00909090909091,
+          "endSec": 14.918181818181818,
+          "text": "Scene times layer equals the final component opacity.",
+          "segmentPath": "/Users/ryan.porter/Projects/Babulus/.babulus/out/cascading-styles-demo/env/development/segments/opacity-demo--opacity-explanation--tts--5f637b0fcc98--1.wav",
+          "durationSec": 2.909090909090909,
+          "rawDurationSec": 2.909090909090909,
+          "trimEndSec": 0
+        }
+      ]
+    },
+    {
+      "type": "tts",
+      "sceneId": "positioning-demo",
+      "cueId": "positioning-explanation",
+      "startSec": 14.918181818181818,
+      "endSec": 21.036363636363635,
+      "segments": [
+        {
+          "type": "tts",
+          "startSec": 14.918181818181818,
+          "endSec": 16.736363636363635,
+          "text": "Rectangle components support precise positioning.",
+          "segmentPath": "/Users/ryan.porter/Projects/Babulus/.babulus/out/cascading-styles-demo/env/development/segments/positioning-demo--positioning-explanation--tts--421f9e360270--1.wav",
+          "durationSec": 1.8181818181818183,
+          "rawDurationSec": 1.8181818181818183,
+          "trimEndSec": 0
+        },
+        {
+          "type": "pause",
+          "startSec": 16.736363636363635,
+          "endSec": 17.036363636363635,
+          "seconds": 0.3
+        },
+        {
+          "type": "tts",
+          "startSec": 17.036363636363635,
+          "endSec": 21.036363636363635,
+          "text": "You can place them anywhere on the canvas with pixel accuracy.",
+          "segmentPath": "/Users/ryan.porter/Projects/Babulus/.babulus/out/cascading-styles-demo/env/development/segments/positioning-demo--positioning-explanation--tts--dce5e5a99c9b--1.wav",
+          "durationSec": 4,
+          "rawDurationSec": 4,
+          "trimEndSec": 0
+        }
+      ]
+    }
+  ],
+  "audio": {
+    "tracks": [
+      {
+        "id": "narration",
+        "kind": "narration",
+        "clips": [
+          {
+            "id": "blank-scene--blank-cue--tts--de0fcd2ef137--1",
+            "kind": "file",
+            "startSec": 0.5,
+            "durationSec": 2.909090909090909,
+            "src": "babulus/cascading-styles-demo/env/development/segments/blank-scene--blank-cue--tts--de0fcd2ef137--1.wav",
+            "volume": 1
+          },
+          {
+            "id": "layered-scene--intro--tts--92cd52d12e27--1",
+            "kind": "file",
+            "startSec": 3.409090909090909,
+            "durationSec": 2.5454545454545454,
+            "src": "babulus/cascading-styles-demo/env/development/segments/layered-scene--intro--tts--92cd52d12e27--1.wav",
+            "volume": 1
+          },
+          {
+            "id": "layered-scene--intro--tts--0a485cfe070b--1",
+            "kind": "file",
+            "startSec": 6.254545454545455,
+            "durationSec": 3.2727272727272725,
+            "src": "babulus/cascading-styles-demo/env/development/segments/layered-scene--intro--tts--0a485cfe070b--1.wav",
+            "volume": 1
+          },
+          {
+            "id": "opacity-demo--opacity-explanation--tts--4232663c2eab--1",
+            "kind": "file",
+            "startSec": 9.527272727272727,
+            "durationSec": 2.1818181818181817,
+            "src": "babulus/cascading-styles-demo/env/development/segments/opacity-demo--opacity-explanation--tts--4232663c2eab--1.wav",
+            "volume": 1
+          },
+          {
+            "id": "opacity-demo--opacity-explanation--tts--5f637b0fcc98--1",
+            "kind": "file",
+            "startSec": 12.00909090909091,
+            "durationSec": 2.909090909090909,
+            "src": "babulus/cascading-styles-demo/env/development/segments/opacity-demo--opacity-explanation--tts--5f637b0fcc98--1.wav",
+            "volume": 1
+          },
+          {
+            "id": "positioning-demo--positioning-explanation--tts--421f9e360270--1",
+            "kind": "file",
+            "startSec": 14.918181818181818,
+            "durationSec": 1.8181818181818183,
+            "src": "babulus/cascading-styles-demo/env/development/segments/positioning-demo--positioning-explanation--tts--421f9e360270--1.wav",
+            "volume": 1
+          },
+          {
+            "id": "positioning-demo--positioning-explanation--tts--dce5e5a99c9b--1",
+            "kind": "file",
+            "startSec": 17.036363636363635,
+            "durationSec": 4,
+            "src": "babulus/cascading-styles-demo/env/development/segments/positioning-demo--positioning-explanation--tts--dce5e5a99c9b--1.wav",
+            "volume": 1
+          }
+        ]
+      }
+    ]
+  }
+}

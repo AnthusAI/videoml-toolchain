@@ -1,9 +1,9 @@
 import type { ScriptData } from "@babulus/shared";
 import { deriveVideoConfig, type TimelineData } from "@babulus/shared";
 import { renderVideo, type RenderVideoOptions, type RenderVideoResult } from "./pipeline.js";
-import { StoryboardRenderer } from "./storyboard.js";
+import { ComposableRenderer } from "./ComposableRenderer.js";
 
-export type RenderStoryboardOptions = Omit<RenderVideoOptions, "component" | "config" | "inputProps"> & {
+export type RenderVideoScriptOptions = Omit<RenderVideoOptions, "component" | "config" | "inputProps"> & {
   script: ScriptData;
   timeline?: TimelineData | null;
   title?: string | null;
@@ -14,7 +14,7 @@ export type RenderStoryboardOptions = Omit<RenderVideoOptions, "component" | "co
   durationFrames?: number;
 };
 
-export const renderStoryboardVideo = async ({
+export const renderVideoFromScript = async ({
   script,
   timeline,
   title,
@@ -24,7 +24,7 @@ export const renderStoryboardVideo = async ({
   height,
   durationFrames,
   ...options
-}: RenderStoryboardOptions): Promise<RenderVideoResult> => {
+}: RenderVideoScriptOptions): Promise<RenderVideoResult> => {
   const derived = deriveVideoConfig({ script, timeline });
   const resolvedFps = fps ?? derived.fps;
   const resolvedWidth = width ?? derived.width;
@@ -34,7 +34,7 @@ export const renderStoryboardVideo = async ({
 
   return renderVideo({
     ...options,
-    component: StoryboardRenderer,
+    component: ComposableRenderer,
     config: {
       fps: resolvedFps,
       width: resolvedWidth,
@@ -48,3 +48,7 @@ export const renderStoryboardVideo = async ({
     },
   });
 };
+
+// Deprecated: Use renderVideoFromScript instead
+export const renderStoryboardVideo = renderVideoFromScript;
+export type RenderStoryboardOptions = RenderVideoScriptOptions;

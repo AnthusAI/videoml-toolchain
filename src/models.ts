@@ -1,5 +1,5 @@
 import { slugify } from "./util.js";
-import type { SemanticMarkup } from "./dsl/types.js";
+import type { SemanticMarkup, VisualStyles, LayerSpec, ComponentSpec } from "./dsl/types.js";
 
 export type Bullet = { id: string; text: string };
 export type CuePoint = {
@@ -19,6 +19,9 @@ export type Scene = {
   endSec: number;
   cues: CuePoint[];
   markup?: SemanticMarkup;
+  styles?: VisualStyles;
+  layers?: LayerSpec[];
+  components?: ComponentSpec[];
 };
 
 export type ScriptMeta = {
@@ -47,6 +50,9 @@ export function scriptToJson(script: Script): Record<string, unknown> {
       startSec: scene.startSec,
       endSec: scene.endSec,
       ...(scene.markup ? { markup: scene.markup } : {}),
+      ...(scene.styles ? { styles: scene.styles } : {}),
+      ...(scene.layers ? { layers: scene.layers } : {}),
+      ...(scene.components ? { components: scene.components } : {}),
       cues: scene.cues.map((cue) => ({
         id: cue.id,
         label: cue.label,

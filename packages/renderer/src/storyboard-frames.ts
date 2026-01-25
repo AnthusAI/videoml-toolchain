@@ -1,9 +1,9 @@
 import type { ScriptData } from "@babulus/shared";
 import { deriveVideoConfig, type TimelineData } from "@babulus/shared";
 import { renderFramesToHtml, type RenderFramesHtmlOptions, type RenderFramesResult } from "./render.js";
-import { StoryboardRenderer } from "./storyboard.js";
+import { ComposableRenderer } from "./ComposableRenderer.js";
 
-export type RenderStoryboardFramesOptions = Omit<
+export type RenderFramesScriptOptions = Omit<
   RenderFramesHtmlOptions,
   "component" | "config" | "inputProps" | "frame"
 > & {
@@ -18,7 +18,7 @@ export type RenderStoryboardFramesOptions = Omit<
   renderFrames?: (options: RenderFramesHtmlOptions) => RenderFramesResult;
 };
 
-export const renderStoryboardFramesHtml = ({
+export const renderFramesFromScript = ({
   script,
   timeline,
   title,
@@ -29,7 +29,7 @@ export const renderStoryboardFramesHtml = ({
   durationFrames,
   renderFrames,
   ...options
-}: RenderStoryboardFramesOptions): RenderFramesResult => {
+}: RenderFramesScriptOptions): RenderFramesResult => {
   const derived = deriveVideoConfig({ script, timeline });
   const resolvedFps = fps ?? derived.fps;
   const resolvedWidth = width ?? derived.width;
@@ -40,7 +40,7 @@ export const renderStoryboardFramesHtml = ({
   const renderer = renderFrames ?? renderFramesToHtml;
   return renderer({
     ...options,
-    component: StoryboardRenderer,
+    component: ComposableRenderer,
     config: {
       fps: resolvedFps,
       width: resolvedWidth,
@@ -55,3 +55,7 @@ export const renderStoryboardFramesHtml = ({
     frame: 0,
   });
 };
+
+// Deprecated: Use renderFramesFromScript instead
+export const renderStoryboardFramesHtml = renderFramesFromScript;
+export type RenderStoryboardFramesOptions = RenderFramesScriptOptions;

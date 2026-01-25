@@ -1,9 +1,9 @@
 import type { ScriptData } from "@babulus/shared";
 import { deriveVideoConfig, type TimelineData } from "@babulus/shared";
 import { renderFramesToPng, type RenderFramesPngOptions, type RenderFramesResult } from "./render.js";
-import { StoryboardRenderer } from "./storyboard.js";
+import { ComposableRenderer } from "./ComposableRenderer.js";
 
-export type RenderStoryboardFramesPngOptions = Omit<
+export type RenderFramesPngScriptOptions = Omit<
   RenderFramesPngOptions,
   "component" | "config" | "inputProps"
 > & {
@@ -18,7 +18,7 @@ export type RenderStoryboardFramesPngOptions = Omit<
   renderFrames?: (options: RenderFramesPngOptions) => Promise<RenderFramesResult>;
 };
 
-export const renderStoryboardFramesPng = async ({
+export const renderFramesPngFromScript = async ({
   script,
   timeline,
   title,
@@ -29,7 +29,7 @@ export const renderStoryboardFramesPng = async ({
   durationFrames,
   renderFrames,
   ...options
-}: RenderStoryboardFramesPngOptions): Promise<RenderFramesResult> => {
+}: RenderFramesPngScriptOptions): Promise<RenderFramesResult> => {
   const derived = deriveVideoConfig({ script, timeline });
   const resolvedFps = fps ?? derived.fps;
   const resolvedWidth = width ?? derived.width;
@@ -40,7 +40,7 @@ export const renderStoryboardFramesPng = async ({
   const renderer = renderFrames ?? renderFramesToPng;
   return await renderer({
     ...options,
-    component: StoryboardRenderer,
+    component: ComposableRenderer,
     config: {
       fps: resolvedFps,
       width: resolvedWidth,
@@ -54,3 +54,7 @@ export const renderStoryboardFramesPng = async ({
     },
   });
 };
+
+// Deprecated: Use renderFramesPngFromScript instead
+export const renderStoryboardFramesPng = renderFramesPngFromScript;
+export type RenderStoryboardFramesPngOptions = RenderFramesPngScriptOptions;

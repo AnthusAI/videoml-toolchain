@@ -427,6 +427,9 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
       endSec: now,
       cues: cuesOut,
       markup: scene.markup,
+      styles: scene.styles,
+      layers: scene.layers,
+      components: scene.components,
     });
     if (sceneStartIndex[scene.id] != null) {
       throw new CompileError(`Duplicate scene id: "${scene.id}"`);

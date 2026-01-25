@@ -1,0 +1,308 @@
+{
+  "scenes": [
+    {
+      "id": "blank-scene",
+      "title": "Blank Scene",
+      "startSec": 0.5,
+      "endSec": 3.409090909090909,
+      "styles": {
+        "background": "transparent"
+      },
+      "cues": [
+        {
+          "id": "blank-cue",
+          "label": "blank-cue",
+          "startSec": 0.5,
+          "endSec": 3.409090909090909,
+          "text": "This is a blank scene with transparent background.",
+          "bullets": []
+        }
+      ]
+    },
+    {
+      "id": "layered-scene",
+      "title": "Layered Scene",
+      "startSec": 3.409090909090909,
+      "endSec": 9.527272727272727,
+      "styles": {
+        "background": "#1a1a2e",
+        "fontFamily": "Arial, sans-serif",
+        "opacity": 1
+      },
+      "layers": [
+        {
+          "id": "background",
+          "zIndex": -10,
+          "components": [
+            {
+              "id": "rectangle-0",
+              "type": "Rectangle",
+              "props": {
+                "gradient": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                "x": 0,
+                "y": 0,
+                "width": "100%",
+                "height": "100%"
+              }
+            }
+          ]
+        },
+        {
+          "id": "content",
+          "styles": {
+            "opacity": 0.9
+          },
+          "zIndex": 10,
+          "components": [
+            {
+              "id": "title-0",
+              "type": "Title",
+              "props": {
+                "text": "Cascading Styles Demo",
+                "fontSize": 64,
+                "fontWeight": 800,
+                "color": "#ffffff",
+                "position": {
+                  "x": 640,
+                  "y": 200
+                }
+              }
+            },
+            {
+              "id": "subtitle-1",
+              "type": "Subtitle",
+              "props": {
+                "text": "Layers • Styles • Components",
+                "fontSize": 32,
+                "color": "#e0e7ff",
+                "position": {
+                  "x": 640,
+                  "y": 300
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "ui",
+          "styles": {
+            "opacity": 0.8
+          },
+          "zIndex": 100,
+          "components": [
+            {
+              "id": "progress-0",
+              "type": "ProgressBar",
+              "props": {
+                "position": "bottom",
+                "height": 6
+              }
+            }
+          ]
+        }
+      ],
+      "cues": [
+        {
+          "id": "intro",
+          "label": "intro",
+          "startSec": 3.409090909090909,
+          "endSec": 9.527272727272727,
+          "text": "This scene demonstrates cascading styles and layers. Notice the gradient background, layered text, and progress bar.",
+          "bullets": []
+        }
+      ]
+    },
+    {
+      "id": "opacity-demo",
+      "title": "Opacity Demo",
+      "startSec": 9.527272727272727,
+      "endSec": 14.918181818181818,
+      "styles": {
+        "background": "#000000",
+        "opacity": 0.8
+      },
+      "layers": [
+        {
+          "id": "semi-transparent",
+          "styles": {
+            "opacity": 0.5
+          },
+          "zIndex": 10,
+          "components": [
+            {
+              "id": "rectangle-0",
+              "type": "Rectangle",
+              "props": {
+                "color": "#ff6b6b",
+                "x": 100,
+                "y": 100,
+                "width": 400,
+                "height": 200
+              }
+            },
+            {
+              "id": "title-1",
+              "type": "Title",
+              "props": {
+                "text": "Opacity: 0.4",
+                "fontSize": 48,
+                "color": "#ffffff",
+                "position": {
+                  "x": 300,
+                  "y": 180
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "more-transparent",
+          "styles": {
+            "opacity": 0.25
+          },
+          "zIndex": 20,
+          "components": [
+            {
+              "id": "rectangle-0",
+              "type": "Rectangle",
+              "props": {
+                "color": "#4ecdc4",
+                "x": 600,
+                "y": 300,
+                "width": 400,
+                "height": 200
+              }
+            },
+            {
+              "id": "title-1",
+              "type": "Title",
+              "props": {
+                "text": "Opacity: 0.2",
+                "fontSize": 48,
+                "color": "#ffffff",
+                "position": {
+                  "x": 800,
+                  "y": 380
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "cues": [
+        {
+          "id": "opacity-explanation",
+          "label": "opacity-explanation",
+          "startSec": 9.527272727272727,
+          "endSec": 14.918181818181818,
+          "text": "Opacity multiplies down through the cascade. Scene times layer equals the final component opacity.",
+          "bullets": []
+        }
+      ]
+    },
+    {
+      "id": "positioning-demo",
+      "title": "Positioning Demo",
+      "startSec": 14.918181818181818,
+      "endSec": 21.036363636363635,
+      "styles": {
+        "background": "#f0f0f0"
+      },
+      "layers": [
+        {
+          "id": "rectangles",
+          "zIndex": 0,
+          "components": [
+            {
+              "id": "rectangle-0",
+              "type": "Rectangle",
+              "props": {
+                "color": "#e74c3c",
+                "x": 50,
+                "y": 50,
+                "width": 200,
+                "height": 150
+              }
+            },
+            {
+              "id": "rectangle-1",
+              "type": "Rectangle",
+              "props": {
+                "color": "#3498db",
+                "x": 1030,
+                "y": 50,
+                "width": 200,
+                "height": 150
+              }
+            },
+            {
+              "id": "rectangle-2",
+              "type": "Rectangle",
+              "props": {
+                "color": "#2ecc71",
+                "x": 50,
+                "y": 520,
+                "width": 200,
+                "height": 150
+              }
+            },
+            {
+              "id": "rectangle-3",
+              "type": "Rectangle",
+              "props": {
+                "color": "#f39c12",
+                "x": 1030,
+                "y": 520,
+                "width": 200,
+                "height": 150
+              }
+            },
+            {
+              "id": "rectangle-4",
+              "type": "Rectangle",
+              "props": {
+                "color": "#9b59b6",
+                "x": 490,
+                "y": 260,
+                "width": 300,
+                "height": 200,
+                "borderRadius": 20
+              }
+            },
+            {
+              "id": "title-5",
+              "type": "Title",
+              "props": {
+                "text": "Positioned Rectangles",
+                "fontSize": 36,
+                "fontWeight": 700,
+                "color": "#ffffff",
+                "position": {
+                  "x": 640,
+                  "y": 350
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "cues": [
+        {
+          "id": "positioning-explanation",
+          "label": "positioning-explanation",
+          "startSec": 14.918181818181818,
+          "endSec": 21.036363636363635,
+          "text": "Rectangle components support precise positioning. You can place them anywhere on the canvas with pixel accuracy.",
+          "bullets": []
+        }
+      ]
+    }
+  ],
+  "fps": 30,
+  "meta": {
+    "fps": 30,
+    "width": 1280,
+    "height": 720,
+    "durationSeconds": 15
+  }
+}
