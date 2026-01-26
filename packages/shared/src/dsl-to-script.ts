@@ -23,6 +23,8 @@ export type PlaceholderTimingStrategy =
  * @param strategy - How to generate placeholder timing (default: cue-count with 3 seconds per cue)
  * @returns ScriptData ready for rendering with ComposableRenderer
  */
+type CompositionStyles = { styles?: Record<string, unknown> };
+
 export function dslToScriptData(
   composition: CompositionSpec,
   strategy: PlaceholderTimingStrategy = { type: 'cue-count', secondsPerCue: 3 }
@@ -53,7 +55,7 @@ export function dslToScriptData(
       height,
       durationSeconds: actualDuration,
     },
-    styles: composition.styles,
+    styles: (composition as CompositionStyles).styles,
   };
 }
 
