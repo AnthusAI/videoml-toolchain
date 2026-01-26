@@ -24,6 +24,7 @@ export type RenderVideoOptions<TInputProps extends Record<string, unknown> = Rec
   ffmpegArgs?: string[];
   browser?: RenderFramesPngOptions["browser"];
   onFrame?: RenderFramesPngOptions["onFrame"];
+  cleanFrames?: boolean; // If true, delete existing frames before rendering (default: true)
   renderFrames?: (options: RenderFramesPngOptions) => Promise<RenderFramesResult>;
   encode?: (options: EncodeVideoOptions, runner?: EncodeRunner) => Promise<void>;
   encodeRunner?: EncodeRunner;
@@ -50,6 +51,7 @@ export const renderVideo = async <TInputProps extends Record<string, unknown> = 
   ffmpegArgs,
   browser,
   onFrame,
+  cleanFrames,
   renderFrames,
   encode,
   encodeRunner,
@@ -68,6 +70,7 @@ export const renderVideo = async <TInputProps extends Record<string, unknown> = 
     workers,
     browser,
     onFrame,
+    cleanFrames,
   };
   const framesResult = await render(frameOptions);
   if (!framesResult.frames.length) {

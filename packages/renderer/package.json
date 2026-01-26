@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./player": "./src/player.tsx",
     "./context": "./src/context.tsx",
+    "./browser-context": "./src/browser-context.tsx",
     "./encode": "./src/encode.ts",
     "./pipeline": "./src/pipeline.ts",
     "./render": "./src/render.tsx",

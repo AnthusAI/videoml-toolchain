@@ -183,6 +183,7 @@ export type ComponentSpec = {
   props?: Record<string, unknown>; // Static props
   bindings?: ComponentBindings; // Data bindings to scene/cue
   styles?: VisualStyles; // Component-level styles (cascade from layer/scene)
+  markup?: SemanticMarkup; // Component-level markup (cascade from layer/scene)
   zIndex?: number; // Layer ordering (higher = front)
   visible?: boolean; // Show/hide
   timing?: {
@@ -196,6 +197,7 @@ export type ComponentSpec = {
 export type LayerSpec = {
   id: string; // Unique ID within scene
   styles?: VisualStyles; // Layer-level styles (cascade from scene)
+  markup?: SemanticMarkup; // Layer-level markup (cascade from scene)
   timing?: {
     // When to show layer
     startSec?: number;

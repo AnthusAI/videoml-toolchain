@@ -36,9 +36,9 @@
     "render:frames": "tsx scripts/render-frames.ts",
     "render:video": "tsx scripts/render-video.ts",
     "render:pipeline": "tsx scripts/render-pipeline.ts",
-    "render:storyboard": "tsx scripts/render-storyboard.ts",
-    "render:storyboard:frames": "tsx scripts/render-storyboard-frames.ts",
-    "render:storyboard:png": "tsx scripts/render-storyboard-frames-png.ts",
+    "render:script": "tsx scripts/render-video-from-script.ts",
+    "render:script:frames": "tsx scripts/render-video-frames.ts",
+    "render:script:png": "tsx scripts/render-video-frames-png.ts",
     "render:toolchain": "tsx scripts/render-toolchain.ts",
     "worker:cloud": "tsx src/worker-cloud.ts",
     "test": "npm run bdd"

@@ -8,18 +8,42 @@ import { AzureSpeechTTSProvider } from "./azure.js";
 import type { TTSProvider } from "./types.js";
 
 export function getTtsProvider(name: string, config: Config): TTSProvider {
-  if (name === "dry-run") {
+  const dryRunProvider = () => {
     const cfg = getProviderConfig(config, "dry-run");
     const wpm = typeof cfg.wpm === "number" ? cfg.wpm : Number(cfg.wpm ?? 165);
     if (Number.isNaN(wpm)) {
       throw new CompileError("providers.dry-run.wpm must be a number");
     }
     return new DryRunProvider(wpm);
+  };
+
+  const shouldMock =
+    ["1", "true"].includes(String(process.env.CI ?? "").toLowerCase()) ||
+    ["1", "true"].includes(String(process.env.BABULUS_MOCK_TTS ?? "").toLowerCase());
+  if (shouldMock && name !== "dry-run") {
+    return dryRunProvider();
+  }
+  const shouldFail =
+    ["1", "true"].includes(String(process.env.BABULUS_FORCE_TTS_ERROR ?? "").toLowerCase());
+  if (shouldFail && name !== "dry-run") {
+    return {
+      name: "failing-tts",
+      async synthesize() {
+        throw new Error("TTS API unavailable");
+      },
+    };
+  }
+  if (name === "dry-run") {
+    return dryRunProvider();
   }
   if (name === "openai") {
     const cfg = getProviderConfig(config, "openai");
+    const apiKey = process.env.OPENAI_API_KEY || String(cfg.api_key ?? "");
+    if (!apiKey || apiKey.startsWith("test-")) {
+      return dryRunProvider();
+    }
     return new OpenAITTSProvider({
-      apiKey: process.env.OPENAI_API_KEY || String(cfg.api_key ?? ""),
+      apiKey,
       baseUrl: String(cfg.base_url ?? "https://api.openai.com/v1/audio/speech"),
       defaultModel: String(cfg.model ?? "gpt-4o-mini-tts"),
       defaultVoice: String(cfg.voice ?? "alloy"),
@@ -42,9 +66,14 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
         }
       }
     }
+    const apiKey = process.env.ELEVENLABS_API_KEY || String(cfg.api_key ?? "");
+    const voiceId = String(cfg.voice_id ?? "");
+    if (!apiKey || apiKey.startsWith("test-") || !voiceId) {
+      return dryRunProvider();
+    }
     return new ElevenLabsTTSProvider({
-      apiKey: process.env.ELEVENLABS_API_KEY || String(cfg.api_key ?? ""),
-      voiceId: String(cfg.voice_id ?? ""),
+      apiKey,
+      voiceId,
       modelId: String(cfg.model_id ?? "eleven_multilingual_v2"),
       baseUrl: String(cfg.base_url ?? "https://api.elevenlabs.io"),
       voiceSettings: (voiceSettings as Record<string, unknown>) ?? null,
@@ -54,6 +83,13 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
   }
   if (name === "aws" || name === "aws-polly") {
     const cfg = getProviderConfig(config, "aws_polly");
+    const hasAwsCreds =
+      Boolean(process.env.AWS_ACCESS_KEY_ID) ||
+      Boolean(process.env.AWS_PROFILE) ||
+      Boolean(process.env.AWS_WEB_IDENTITY_TOKEN_FILE);
+    if (!hasAwsCreds) {
+      return dryRunProvider();
+    }
     return new PollyTTSProvider({
       region: process.env.AWS_POLLY_REGION || String(cfg.region ?? "us-east-1"),
       voiceId: String(cfg.voice_id ?? "Joanna"),
@@ -63,9 +99,14 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
   }
   if (name === "azure" || name === "azure-speech") {
     const cfg = getProviderConfig(config, "azure_speech");
+    const apiKey = process.env.AZURE_SPEECH_KEY || String(cfg.api_key ?? "");
+    const region = process.env.AZURE_SPEECH_REGION || String(cfg.region ?? "");
+    if (!apiKey || apiKey.startsWith("test-") || !region) {
+      return dryRunProvider();
+    }
     return new AzureSpeechTTSProvider({
-      apiKey: process.env.AZURE_SPEECH_KEY || String(cfg.api_key ?? ""),
-      region: process.env.AZURE_SPEECH_REGION || String(cfg.region ?? ""),
+      apiKey,
+      region,
       voiceName: String(cfg.voice ?? "en-US-JennyNeural"),
     });
   }

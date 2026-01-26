@@ -25,6 +25,9 @@ export type ScriptScene = {
   startSec?: number;
   endSec?: number;
   cues?: ScriptCue[];
+  styles?: Record<string, unknown>;
+  layers?: unknown[];
+  components?: unknown[];
   markup?: SemanticMarkup;
 };
 

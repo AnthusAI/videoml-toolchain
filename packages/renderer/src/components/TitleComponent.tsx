@@ -34,6 +34,11 @@ export function TitleComponent(props: TitleProps) {
 
   if (!displayText) return null;
 
+  const resolvedTextAlign = textAlign ?? styles.textAlign ?? "left";
+
+  // For center-aligned text, use transform to center around the position
+  const transform = resolvedTextAlign === "center" ? "translateX(-50%)" : undefined;
+
   return (
     <div
       style={{
@@ -43,10 +48,11 @@ export function TitleComponent(props: TitleProps) {
         fontSize: fontSize ?? styles.fontSize ?? 48,
         fontWeight: fontWeight ?? styles.fontWeight ?? 700,
         color: color ?? styles.color ?? "#ffffff",
-        textAlign: textAlign ?? styles.textAlign ?? "left",
+        textAlign: resolvedTextAlign,
         fontFamily: styles.fontFamily ?? "ui-sans-serif, system-ui, sans-serif",
         opacity: styles._computedOpacity ?? 1,
         whiteSpace: "nowrap",
+        transform,
       }}
     >
       {displayText}

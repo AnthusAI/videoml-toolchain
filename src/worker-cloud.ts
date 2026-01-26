@@ -10,7 +10,7 @@ import { loadVideoFile } from './dsl/load.js';
 import { ensureDir } from './util.js';
 import { loadUsageEntries } from './telemetry.js';
 // @ts-ignore
-import { renderStoryboardVideo } from '../packages/renderer/src/storyboard-render.js';
+import { renderStoryboardVideo } from '../packages/renderer/src/video-render.js';
 
 // Polyfill for WebSocket if needed (Amplify Data uses WS for subscriptions, but we use list/HTTP mostly)
 import { WebSocket } from 'ws';
@@ -116,7 +116,7 @@ async function processRenderJob(job: any) {
 
         // 3. Fetch Generation Run
         const runRes = await client.models.GenerationRun.get({ id: generationRunId });
-        const run = runRes.data;
+        const run = runRes.data as any;
         if (!run) throw new Error(`Generation run not found: ${generationRunId}`);
 
         const workDir = join(process.cwd(), '.babulus', 'worker', job.id);
@@ -174,7 +174,7 @@ async function processRenderJob(job: any) {
         }).result;
         
         // 8. Create RenderRun
-        const { data: renderRun } = await client.models.RenderRun.create({
+        const renderRunRes = await client.models.RenderRun.create({
             orgId: job.orgId,
             videoId,
             generationRunId,
@@ -182,6 +182,7 @@ async function processRenderJob(job: any) {
             mp4ArtifactKey: uploadRes.path,
             createdAt: new Date().toISOString()
         });
+        const renderRun = renderRunRes.data as any;
 
         // 9. Create Usage Event for Render
         if (renderRun) {
@@ -248,7 +249,7 @@ async function processJob(job: any) {
         
         // 3. Fetch video and version
         const videoRes = await client.models.Video.get({ id: videoId });
-        const video = videoRes.data;
+        const video = videoRes.data as any;
         if (!video) throw new Error(`Video not found: ${videoId}`);
         
         let sourceText = DEFAULT_DSL;
@@ -256,8 +257,9 @@ async function processJob(job: any) {
         
         if (storyboardVersionId) {
           const versionRes = await client.models.StoryboardVersion.get({ id: storyboardVersionId });
-          if (versionRes.data?.sourceText) {
-            sourceText = versionRes.data.sourceText;
+          const version = versionRes.data as any;
+          if (version?.sourceText) {
+            sourceText = version.sourceText;
           }
         } else {
           console.log('No active storyboard version, using default DSL');

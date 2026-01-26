@@ -7,6 +7,9 @@ import type {
   CompositionMeta,
   CompositionSpec,
   CueSpec,
+  VisualStyles,
+  LayerSpec,
+  ComponentSpec,
   SemanticMarkup,
   PauseSpec,
   SceneSpec,
@@ -17,14 +20,66 @@ import type {
 } from "./types.js";
 import { normalizePause, pause as pauseHelper } from "./pause.js";
 
-export type DefineVideoFn = (builder: VideoBuilder) => void | Promise<void>;
+export type DefineVideoFn = (builder: VideoBuilder | CompositionBuilder) => void | Promise<void>;
 
-export function defineVideo(fn: DefineVideoFn): VideoFileSpec | Promise<VideoFileSpec> {
+export type DefineVideoConfig = {
+  fps?: number;
+  width?: number;
+  height?: number;
+  durationSeconds?: number;
+};
+
+// New simplified signature: defineVideo(title, config, fn)
+export function defineVideo(
+  title: string,
+  config: DefineVideoConfig,
+  fn: (builder: CompositionBuilder) => void
+): VideoFileSpec | Promise<VideoFileSpec>;
+// New simplified signature without config: defineVideo(title, fn)
+export function defineVideo(title: string, fn: (builder: CompositionBuilder) => void): VideoFileSpec | Promise<VideoFileSpec>;
+// Legacy signature: defineVideo(fn) where fn receives VideoBuilder
+export function defineVideo(fn: DefineVideoFn): VideoFileSpec | Promise<VideoFileSpec>;
+export function defineVideo(
+  titleOrFn: string | DefineVideoFn,
+  configOrFn?: DefineVideoConfig | ((builder: CompositionBuilder) => void),
+  fnMaybe?: (builder: CompositionBuilder) => void
+): VideoFileSpec | Promise<VideoFileSpec> {
+  // New simplified API: defineVideo(title, config, fn)
+  if (typeof titleOrFn === "string" && typeof configOrFn === "object" && fnMaybe) {
+    const builder = new CompositionBuilder(titleOrFn, { meta: configOrFn });
+    const result = fnMaybe(builder);
+    const maybePromise = result as Promise<void> | undefined;
+    if (typeof maybePromise?.then === "function") {
+      return (async () => {
+        await maybePromise;
+        return { compositions: [builder.toSpec()] };
+      })();
+    }
+    return { compositions: [builder.toSpec()] };
+  }
+
+  // New simplified API: defineVideo(title, fn)
+  if (typeof titleOrFn === "string" && typeof configOrFn === "function") {
+    const builder = new CompositionBuilder(titleOrFn, {});
+    const result = configOrFn(builder);
+    const maybePromise = result as Promise<void> | undefined;
+    if (typeof maybePromise?.then === "function") {
+      return (async () => {
+        await maybePromise;
+        return { compositions: [builder.toSpec()] };
+      })();
+    }
+    return { compositions: [builder.toSpec()] };
+  }
+
+  // Legacy API: defineVideo(fn) where fn receives VideoBuilder
+  const fn = titleOrFn as DefineVideoFn;
   const builder = new VideoBuilder();
   const result = fn(builder);
-  if (result && typeof (result as Promise<void>).then === "function") {
+  const maybePromise = result as Promise<void> | undefined;
+  if (typeof maybePromise?.then === "function") {
     return (async () => {
-      await result;
+      await maybePromise;
       return builder.toSpec();
     })();
   }
@@ -145,7 +200,7 @@ class CompositionBuilder {
 
 class SceneBuilder {
   private id: string;
-  private title: string;
+  private sceneTitle: string;
   private time?: TimeRange;
   private items: Array<CueSpec | PauseSpec> = [];
   private audioPlan: AudioPlan;
@@ -156,7 +211,7 @@ class SceneBuilder {
 
   constructor(name: string, opts: Partial<SceneSpec>, audioPlan: AudioPlan) {
     this.id = opts.id ?? slugify(name);
-    this.title = opts.title ?? name;
+    this.sceneTitle = opts.title ?? name;
     this.time = opts.time;
     this.audioPlan = audioPlan;
     this._markup = opts.markup;
@@ -247,12 +302,13 @@ class SceneBuilder {
   }
 
   /**
-   * Create a layer to group components with shared styles and timing.
+   * Create a layer to group components with shared styles, markup, and timing.
    */
   layer(
     id: string,
     opts: {
       styles?: VisualStyles;
+      markup?: SemanticMarkup;
       timing?: { startSec?: number; endSec?: number };
       visible?: boolean;
       zIndex?: number;
@@ -262,6 +318,7 @@ class SceneBuilder {
     const layerSpec: LayerSpec = {
       id,
       styles: opts.styles,
+      markup: opts.markup,
       timing: opts.timing,
       visible: opts.visible,
       zIndex: opts.zIndex,
@@ -321,7 +378,7 @@ class SceneBuilder {
   toSpec(): SceneSpec {
     return {
       id: this.id,
-      title: this.title,
+      title: this.sceneTitle,
       time: this.time,
       items: this.items,
       markup: this._markup,
@@ -393,11 +450,23 @@ class LayerBuilder {
     id: string,
     type: string | React.ComponentType<any>,
     props?: Record<string, unknown>,
+    options?: {
+      markup?: SemanticMarkup;
+      styles?: VisualStyles;
+      zIndex?: number;
+      visible?: boolean;
+      timing?: { startSec?: number; endSec?: number };
+    }
   ): this {
     this.spec.components.push({
       id,
       type,
       props: props ?? {},
+      markup: options?.markup,
+      styles: options?.styles,
+      zIndex: options?.zIndex,
+      visible: options?.visible,
+      timing: options?.timing,
     });
     return this;
   }

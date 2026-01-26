@@ -23,7 +23,7 @@
       "id": "layered-scene",
       "title": "Layered Scene",
       "startSec": 3.409090909090909,
-      "endSec": 9.527272727272727,
+      "endSec": 9.427272727272728,
       "styles": {
         "background": "#1a1a2e",
         "fontFamily": "Arial, sans-serif",
@@ -62,6 +62,7 @@
                 "fontSize": 64,
                 "fontWeight": 800,
                 "color": "#ffffff",
+                "textAlign": "center",
                 "position": {
                   "x": 640,
                   "y": 200
@@ -72,12 +73,27 @@
               "id": "subtitle-1",
               "type": "Subtitle",
               "props": {
-                "text": "Layers • Styles • Components",
-                "fontSize": 32,
+                "text": "This scene demonstrates cascading styles and layers.",
+                "fontSize": 24,
                 "color": "#e0e7ff",
+                "textAlign": "center",
                 "position": {
                   "x": 640,
                   "y": 300
+                }
+              }
+            },
+            {
+              "id": "subtitle-2",
+              "type": "Subtitle",
+              "props": {
+                "text": "Notice the gradient background, layered text, and progress bar.",
+                "fontSize": 24,
+                "color": "#e0e7ff",
+                "textAlign": "center",
+                "position": {
+                  "x": 640,
+                  "y": 340
                 }
               }
             }
@@ -106,7 +122,7 @@
           "id": "intro",
           "label": "intro",
           "startSec": 3.409090909090909,
-          "endSec": 9.527272727272727,
+          "endSec": 9.427272727272728,
           "text": "This scene demonstrates cascading styles and layers. Notice the gradient background, layered text, and progress bar.",
           "bullets": []
         }
@@ -115,8 +131,8 @@
     {
       "id": "opacity-demo",
       "title": "Opacity Demo",
-      "startSec": 9.527272727272727,
-      "endSec": 14.918181818181818,
+      "startSec": 9.427272727272728,
+      "endSec": 14.81818181818182,
       "styles": {
         "background": "#000000",
         "opacity": 0.8
@@ -193,8 +209,8 @@
         {
           "id": "opacity-explanation",
           "label": "opacity-explanation",
-          "startSec": 9.527272727272727,
-          "endSec": 14.918181818181818,
+          "startSec": 9.427272727272728,
+          "endSec": 14.81818181818182,
           "text": "Opacity multiplies down through the cascade. Scene times layer equals the final component opacity.",
           "bullets": []
         }
@@ -203,8 +219,8 @@
     {
       "id": "positioning-demo",
       "title": "Positioning Demo",
-      "startSec": 14.918181818181818,
-      "endSec": 21.036363636363635,
+      "startSec": 14.81818181818182,
+      "endSec": 20.93636363636364,
       "styles": {
         "background": "#f0f0f0"
       },
@@ -276,7 +292,8 @@
                 "text": "Positioned Rectangles",
                 "fontSize": 36,
                 "fontWeight": 700,
-                "color": "#ffffff",
+                "color": "#000000",
+                "textAlign": "center",
                 "position": {
                   "x": 640,
                   "y": 350
@@ -290,8 +307,8 @@
         {
           "id": "positioning-explanation",
           "label": "positioning-explanation",
-          "startSec": 14.918181818181818,
-          "endSec": 21.036363636363635,
+          "startSec": 14.81818181818182,
+          "endSec": 20.93636363636364,
           "text": "Rectangle components support precise positioning. You can place them anywhere on the canvas with pixel accuracy.",
           "bullets": []
         }

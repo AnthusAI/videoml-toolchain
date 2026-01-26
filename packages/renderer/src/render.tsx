@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, writeFileSync, readdirSync, unlinkSync, existsSync } from "fs";
 import { cpus } from "os";
 import { dirname, join } from "path";
 import React from "react";
@@ -34,6 +34,7 @@ export type RenderFramesPngOptions = Omit<RenderFrameOptions, "frame"> & {
   autoClose?: boolean;
   workers?: number;
   onFrame?: (frame: number, path: string) => void;
+  cleanFrames?: boolean; // If true, delete existing frames before rendering (default: true)
 };
 
 export type RenderFramesHtmlOptions = Omit<RenderFrameOptions, "frame"> & {
@@ -72,6 +73,39 @@ type PageAdapter = {
 
 const ensureDir = (path: string) => {
   mkdirSync(path, { recursive: true });
+};
+
+const cleanFramesDir = (outDir: string, framePattern: string) => {
+  if (!existsSync(outDir)) {
+    return; // Directory doesn't exist, nothing to clean
+  }
+
+  try {
+    const files = readdirSync(outDir);
+
+    // Convert frame pattern to regex (e.g., "frame-%06d.png" -> /^frame-\d{6}\.png$/)
+    const patternRegex = framePattern
+      .replace(/%0(\d+)d/, (_, digits) => `\\d{${digits}}`)
+      .replace(/%d/, '\\d+')
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // Escape other special chars
+
+    const frameRegex = new RegExp(`^${patternRegex}$`);
+
+    // Delete only files matching the frame pattern
+    let deletedCount = 0;
+    for (const file of files) {
+      if (frameRegex.test(file)) {
+        unlinkSync(join(outDir, file));
+        deletedCount++;
+      }
+    }
+
+    if (deletedCount > 0) {
+      console.error(`Cleaned ${deletedCount} existing frame(s) from ${outDir}`);
+    }
+  } catch (err) {
+    console.error(`Warning: Failed to clean frames directory: ${err}`);
+  }
 };
 
 const applyViewport = async (
@@ -215,6 +249,7 @@ export const renderFramesToPng = async ({
   autoClose,
   workers,
   onFrame,
+  cleanFrames = true, // Default: clean existing frames before rendering
   ...options
 }: RenderFramesPngOptions): Promise<RenderFramesResult> => {
   const lastFrame = Math.min(
@@ -231,6 +266,11 @@ export const renderFramesToPng = async ({
 
   const frames: Array<{ frame: number; path: string }> = [];
   ensureDir(outDir);
+
+  // Clean existing frames if requested (default: true)
+  if (cleanFrames) {
+    cleanFramesDir(outDir, framePattern);
+  }
   const totalFrames = lastFrame - firstFrame + 1;
   const workerCount = Math.min(resolveWorkerCount(workers), totalFrames);
   const nextFrameRef = { value: firstFrame };

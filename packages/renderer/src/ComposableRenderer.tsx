@@ -2,8 +2,9 @@ import React, { useMemo } from "react";
 import { getActiveCue, getActiveScene, type ScriptData } from "@babulus/shared";
 import { useCurrentFrame, useVideoConfig } from "./context.tsx";
 import { getComponent } from "./components/registry.ts";
-import type { ComponentSpec, LayerSpec, VisualStyles } from "../../../src/dsl/types.ts";
+import type { ComponentSpec, LayerSpec, VisualStyles, SemanticMarkup } from "../../../src/dsl/types.ts";
 import { cascadeStyles, type CascadedStyles } from "./styles/cascade.ts";
+import { cascadeMarkup, type CascadedMarkup } from "./markup/cascade.ts";
 
 export type ComposableRendererProps = {
   script: ScriptData;
@@ -25,8 +26,9 @@ export const ComposableRenderer = ({ script }: ComposableRendererProps) => {
   const durationSec = useMemo(() => getScriptDuration(script), [script]);
   const progressPct = durationSec > 0 ? Math.min(100, Math.max(0, (timeSec / durationSec) * 100)) : 0;
 
-  const sceneStyles: VisualStyles = scene?.styles || {};
-  const layers: LayerSpec[] = scene?.layers || [];
+  const sceneStyles: VisualStyles = (scene?.styles as VisualStyles | undefined) || {};
+  const sceneMarkup: SemanticMarkup = (scene?.markup as SemanticMarkup | undefined) || {};
+  const layers: LayerSpec[] = (scene?.layers as LayerSpec[] | undefined) || [];
   const components: ComponentSpec[] = (scene?.components as ComponentSpec[] | undefined) || [];
 
   // Apply scene-level background (default black)
@@ -43,12 +45,31 @@ export const ComposableRenderer = ({ script }: ComposableRendererProps) => {
         opacity: sceneStyles.opacity,
       }}
     >
+      {/* DEBUG: Test rectangle */}
+      <div style={{
+        position: 'absolute',
+        top: 100,
+        left: 100,
+        width: 200,
+        height: 200,
+        backgroundColor: 'cyan',
+        border: '5px solid yellow',
+        zIndex: 9999
+      }}>
+        <div style={{ color: 'black', fontSize: 24, padding: 10 }}>
+          TEST RECT<br/>
+          Frame: {frame}<br/>
+          Layers: {layers.length}<br/>
+          Scene: {scene?.id || 'none'}
+        </div>
+      </div>
       {/* Render layers */}
       {layers.map((layer) => (
         <Layer
           key={layer.id}
           layer={layer}
           sceneStyles={sceneStyles}
+          sceneMarkup={sceneMarkup}
           scene={scene}
           cue={cue}
           frame={frame}
@@ -66,7 +87,9 @@ export const ComposableRenderer = ({ script }: ComposableRendererProps) => {
           key={spec.id}
           spec={spec}
           sceneStyles={sceneStyles}
+          sceneMarkup={sceneMarkup}
           layerStyles={{}}
+          layerMarkup={{}}
           scene={scene}
           cue={cue}
           frame={frame}
@@ -87,6 +110,7 @@ export const ComposableRenderer = ({ script }: ComposableRendererProps) => {
 function Layer({
   layer,
   sceneStyles,
+  sceneMarkup,
   scene,
   cue,
   frame,
@@ -98,6 +122,7 @@ function Layer({
 }: {
   layer: LayerSpec;
   sceneStyles: VisualStyles;
+  sceneMarkup: SemanticMarkup;
   scene: any;
   cue: any;
   frame: number;
@@ -118,6 +143,7 @@ function Layer({
   }
 
   const layerStyles = layer.styles || {};
+  const layerMarkup = layer.markup || {};
 
   // Sort components by zIndex (lower = back, higher = front)
   const sortedComponents = useMemo(() => {
@@ -138,7 +164,9 @@ function Layer({
           key={spec.id}
           spec={spec}
           sceneStyles={sceneStyles}
+          sceneMarkup={sceneMarkup}
           layerStyles={layerStyles}
+          layerMarkup={layerMarkup}
           scene={scene}
           cue={cue}
           frame={frame}
@@ -154,12 +182,14 @@ function Layer({
 }
 
 /**
- * Component renderer - renders a single component with cascaded styles.
+ * Component renderer - renders a single component with cascaded styles and markup.
  */
 function Component({
   spec,
   sceneStyles,
+  sceneMarkup,
   layerStyles,
+  layerMarkup,
   scene,
   cue,
   frame,
@@ -171,7 +201,9 @@ function Component({
 }: {
   spec: ComponentSpec;
   sceneStyles: VisualStyles;
+  sceneMarkup: SemanticMarkup;
   layerStyles: VisualStyles;
+  layerMarkup: SemanticMarkup;
   scene: any;
   cue: any;
   frame: number;
@@ -205,17 +237,26 @@ function Component({
     spec.styles || {}
   );
 
-  // Merge props with context and styles
+  // Cascade markup: scene → layer → component
+  const cascadedMarkup: CascadedMarkup = cascadeMarkup(
+    sceneMarkup,
+    layerMarkup,
+    spec.markup || {}
+  );
+
+  // Merge props with context, styles, and markup
+  // IMPORTANT: Use videoWidth/videoHeight to avoid overwriting component's own width/height props
   const props: Record<string, any> = {
     ...spec.props,
     styles: cascadedStyles, // Pass cascaded styles to component
+    markup: cascadedMarkup, // Pass cascaded markup to component
     scene,
     cue,
     frame,
     timeSec,
     fps,
-    width,
-    height,
+    videoWidth: width,
+    videoHeight: height,
     progress: progressPct, // For ProgressBar
   };
 

@@ -52,7 +52,6 @@ export const renderFramesFromScript = ({
       title: title ?? undefined,
       subtitle: subtitle ?? undefined,
     },
-    frame: 0,
   });
 };
 

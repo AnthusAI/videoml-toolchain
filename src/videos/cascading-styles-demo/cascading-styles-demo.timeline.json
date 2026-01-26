@@ -30,7 +30,7 @@
       "sceneId": "layered-scene",
       "cueId": "intro",
       "startSec": 3.409090909090909,
-      "endSec": 9.527272727272727,
+      "endSec": 9.427272727272728,
       "segments": [
         {
           "type": "tts",
@@ -45,13 +45,13 @@
         {
           "type": "pause",
           "startSec": 5.954545454545455,
-          "endSec": 6.254545454545455,
-          "seconds": 0.3
+          "endSec": 6.154545454545455,
+          "seconds": 0.2
         },
         {
           "type": "tts",
-          "startSec": 6.254545454545455,
-          "endSec": 9.527272727272727,
+          "startSec": 6.154545454545455,
+          "endSec": 9.427272727272728,
           "text": "Notice the gradient background, layered text, and progress bar.",
           "segmentPath": "/Users/ryan.porter/Projects/Babulus/.babulus/out/cascading-styles-demo/env/development/segments/layered-scene--intro--tts--0a485cfe070b--1.wav",
           "durationSec": 3.2727272727272725,
@@ -64,13 +64,13 @@
       "type": "tts",
       "sceneId": "opacity-demo",
       "cueId": "opacity-explanation",
-      "startSec": 9.527272727272727,
-      "endSec": 14.918181818181818,
+      "startSec": 9.427272727272728,
+      "endSec": 14.81818181818182,
       "segments": [
         {
           "type": "tts",
-          "startSec": 9.527272727272727,
-          "endSec": 11.709090909090909,
+          "startSec": 9.427272727272728,
+          "endSec": 11.60909090909091,
           "text": "Opacity multiplies down through the cascade.",
           "segmentPath": "/Users/ryan.porter/Projects/Babulus/.babulus/out/cascading-styles-demo/env/development/segments/opacity-demo--opacity-explanation--tts--4232663c2eab--1.wav",
           "durationSec": 2.1818181818181817,
@@ -79,14 +79,14 @@
         },
         {
           "type": "pause",
-          "startSec": 11.709090909090909,
-          "endSec": 12.00909090909091,
+          "startSec": 11.60909090909091,
+          "endSec": 11.90909090909091,
           "seconds": 0.3
         },
         {
           "type": "tts",
-          "startSec": 12.00909090909091,
-          "endSec": 14.918181818181818,
+          "startSec": 11.90909090909091,
+          "endSec": 14.81818181818182,
           "text": "Scene times layer equals the final component opacity.",
           "segmentPath": "/Users/ryan.porter/Projects/Babulus/.babulus/out/cascading-styles-demo/env/development/segments/opacity-demo--opacity-explanation--tts--5f637b0fcc98--1.wav",
           "durationSec": 2.909090909090909,
@@ -99,13 +99,13 @@
       "type": "tts",
       "sceneId": "positioning-demo",
       "cueId": "positioning-explanation",
-      "startSec": 14.918181818181818,
-      "endSec": 21.036363636363635,
+      "startSec": 14.81818181818182,
+      "endSec": 20.93636363636364,
       "segments": [
         {
           "type": "tts",
-          "startSec": 14.918181818181818,
-          "endSec": 16.736363636363635,
+          "startSec": 14.81818181818182,
+          "endSec": 16.63636363636364,
           "text": "Rectangle components support precise positioning.",
           "segmentPath": "/Users/ryan.porter/Projects/Babulus/.babulus/out/cascading-styles-demo/env/development/segments/positioning-demo--positioning-explanation--tts--421f9e360270--1.wav",
           "durationSec": 1.8181818181818183,
@@ -114,14 +114,14 @@
         },
         {
           "type": "pause",
-          "startSec": 16.736363636363635,
-          "endSec": 17.036363636363635,
+          "startSec": 16.63636363636364,
+          "endSec": 16.93636363636364,
           "seconds": 0.3
         },
         {
           "type": "tts",
-          "startSec": 17.036363636363635,
-          "endSec": 21.036363636363635,
+          "startSec": 16.93636363636364,
+          "endSec": 20.93636363636364,
           "text": "You can place them anywhere on the canvas with pixel accuracy.",
           "segmentPath": "/Users/ryan.porter/Projects/Babulus/.babulus/out/cascading-styles-demo/env/development/segments/positioning-demo--positioning-explanation--tts--dce5e5a99c9b--1.wav",
           "durationSec": 4,
@@ -156,7 +156,7 @@
           {
             "id": "layered-scene--intro--tts--0a485cfe070b--1",
             "kind": "file",
-            "startSec": 6.254545454545455,
+            "startSec": 6.154545454545455,
             "durationSec": 3.2727272727272725,
             "src": "babulus/cascading-styles-demo/env/development/segments/layered-scene--intro--tts--0a485cfe070b--1.wav",
             "volume": 1
@@ -164,7 +164,7 @@
           {
             "id": "opacity-demo--opacity-explanation--tts--4232663c2eab--1",
             "kind": "file",
-            "startSec": 9.527272727272727,
+            "startSec": 9.427272727272728,
             "durationSec": 2.1818181818181817,
             "src": "babulus/cascading-styles-demo/env/development/segments/opacity-demo--opacity-explanation--tts--4232663c2eab--1.wav",
             "volume": 1
@@ -172,7 +172,7 @@
           {
             "id": "opacity-demo--opacity-explanation--tts--5f637b0fcc98--1",
             "kind": "file",
-            "startSec": 12.00909090909091,
+            "startSec": 11.90909090909091,
             "durationSec": 2.909090909090909,
             "src": "babulus/cascading-styles-demo/env/development/segments/opacity-demo--opacity-explanation--tts--5f637b0fcc98--1.wav",
             "volume": 1
@@ -180,7 +180,7 @@
           {
             "id": "positioning-demo--positioning-explanation--tts--421f9e360270--1",
             "kind": "file",
-            "startSec": 14.918181818181818,
+            "startSec": 14.81818181818182,
             "durationSec": 1.8181818181818183,
             "src": "babulus/cascading-styles-demo/env/development/segments/positioning-demo--positioning-explanation--tts--421f9e360270--1.wav",
             "volume": 1
@@ -188,7 +188,7 @@
           {
             "id": "positioning-demo--positioning-explanation--tts--dce5e5a99c9b--1",
             "kind": "file",
-            "startSec": 17.036363636363635,
+            "startSec": 16.93636363636364,
             "durationSec": 4,
             "src": "babulus/cascading-styles-demo/env/development/segments/positioning-demo--positioning-explanation--tts--dce5e5a99c9b--1.wav",
             "volume": 1

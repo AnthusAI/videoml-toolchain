@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from "fs";
 import { dirname, resolve } from "path";
 import { ensureDir } from "./util.js";
-import { renderStoryboardVideo } from "../packages/renderer/src/storyboard-render.js";
+import { renderStoryboardVideo } from "../packages/renderer/src/video-render.js";
 import type { ScriptData } from "../packages/shared/src/video.js";
 import type { TimelineData } from "../packages/shared/src/timeline.js";
 
@@ -104,8 +104,8 @@ const parseJob = (value: unknown): WorkerJob => {
     meta,
     input: {
       scriptPath: requireString(input.scriptPath, "input.scriptPath"),
-      timelinePath: typeof input.timelinePath === "string" ? input.timelinePath : input.timelinePath ?? null,
-      audioPath: typeof input.audioPath === "string" ? input.audioPath : input.audioPath ?? null,
+      timelinePath: typeof input.timelinePath === "string" ? input.timelinePath : null,
+      audioPath: typeof input.audioPath === "string" ? input.audioPath : null,
       framesDir: requireString(input.framesDir, "input.framesDir"),
       outputPath: requireString(input.outputPath, "input.outputPath"),
       options: isObject(input.options) ? (input.options as WorkerRenderOptions) : undefined,

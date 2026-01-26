@@ -19,7 +19,7 @@ export type SubtitleProps = {
 export function SubtitleComponent(props: SubtitleProps) {
   const {
     text,
-    binding = "cue.text", // Default to cue text
+    binding,
     fontSize,
     fontWeight,
     color,
@@ -29,10 +29,15 @@ export function SubtitleComponent(props: SubtitleProps) {
     styles = {} as CascadedStyles,
   } = props;
 
-  // Resolve text from binding or explicit prop
-  const displayText = binding && cue ? resolveBinding(binding, { cue }) : text;
+  // Resolve text: explicit text takes precedence, then binding, then default to cue.text
+  const displayText = text || (binding && cue ? resolveBinding(binding, { cue }) : (cue ? resolveBinding("cue.text", { cue }) : undefined));
 
   if (!displayText) return null;
+
+  const resolvedTextAlign = textAlign ?? styles.textAlign ?? "left";
+
+  // For center-aligned text, use transform to center around the position
+  const transform = resolvedTextAlign === "center" ? "translateX(-50%)" : undefined;
 
   return (
     <div
@@ -43,9 +48,11 @@ export function SubtitleComponent(props: SubtitleProps) {
         fontSize: fontSize ?? styles.fontSize ?? 20,
         fontWeight: fontWeight ?? styles.fontWeight ?? 400,
         color: color ?? styles.color ?? "#cbd5f5",
-        textAlign: textAlign ?? styles.textAlign ?? "left",
+        textAlign: resolvedTextAlign,
         fontFamily: styles.fontFamily ?? "ui-sans-serif, system-ui, sans-serif",
         opacity: styles._computedOpacity ?? 1,
+        whiteSpace: "nowrap",
+        transform,
       }}
     >
       {displayText}
