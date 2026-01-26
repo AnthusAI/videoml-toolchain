@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync, readdirSync, unlinkSync, existsSync } from "fs";
 import { cpus } from "os";
 import { dirname, join } from "path";
+import { createRequire } from "module";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { clamp } from "./math.js";
@@ -70,6 +71,8 @@ type PageAdapter = {
   screenshot: (options: { type: "png"; omitBackground?: boolean }) => Promise<Buffer>;
   close?: () => Promise<void>;
 };
+
+const require = createRequire(import.meta.url);
 
 const ensureDir = (path: string) => {
   mkdirSync(path, { recursive: true });
@@ -173,10 +176,10 @@ export const renderFrameToFile = ({ outPath, ...options }: RenderFrameFileOption
 
 const loadPlaywright = async (): Promise<{ chromium: { launch: () => Promise<BrowserAdapter> } }> => {
   try {
-    return (await import("playwright")) as { chromium: { launch: () => Promise<BrowserAdapter> } };
+    return require("playwright") as { chromium: { launch: () => Promise<BrowserAdapter> } };
   } catch {
     try {
-      return (await import("playwright-core")) as { chromium: { launch: () => Promise<BrowserAdapter> } };
+      return require("playwright-core") as { chromium: { launch: () => Promise<BrowserAdapter> } };
     } catch {
       throw new Error("Playwright is required for PNG rendering. Install 'playwright' or 'playwright-core'.");
     }
