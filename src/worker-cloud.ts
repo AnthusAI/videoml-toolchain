@@ -396,7 +396,8 @@ async function run() {
         if (job.kind === 'generate') {
             await processJob(job);
         } else if (job.kind === 'render') {
-            await processRenderJob(job);
+            // Render jobs are now handled by ECS Fargate tasks, skip
+            console.log(`Skipping render job ${job.id} (handled by ECS)`);
         } else {
             console.log(`Skipping unsupported job kind: ${job.kind}`);
         }
