@@ -53,6 +53,7 @@ export function dslToScriptData(
       height,
       durationSeconds: actualDuration,
     },
+    styles: composition.styles,
   };
 }
 
