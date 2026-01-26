@@ -42,6 +42,8 @@ export type ScriptData = {
   scenes?: ScriptScene[];
   fps?: number;
   meta?: ScriptMeta;
+  styles?: Record<string, unknown>; // Composition-level styles
+  markup?: SemanticMarkup; // Composition-level markup
 };
 
 export type VideoConfigDefaults = {
