@@ -31,8 +31,9 @@ export const ComposableRenderer = ({ script }: ComposableRendererProps) => {
   const layers: LayerSpec[] = (scene?.layers as LayerSpec[] | undefined) || [];
   const components: ComponentSpec[] = (scene?.components as ComponentSpec[] | undefined) || [];
 
-  // Apply scene-level background (default black)
-  const sceneBackground = sceneStyles.background || "#000000";
+  // Apply scene-level background (default white)
+  const sceneBackground = sceneStyles.background || "#fdfdfd";
+  console.log('[ComposableRenderer] sceneBackground:', sceneBackground, 'sceneStyles:', sceneStyles);
 
   return (
     <div
@@ -45,24 +46,6 @@ export const ComposableRenderer = ({ script }: ComposableRendererProps) => {
         opacity: sceneStyles.opacity,
       }}
     >
-      {/* DEBUG: Test rectangle */}
-      <div style={{
-        position: 'absolute',
-        top: 100,
-        left: 100,
-        width: 200,
-        height: 200,
-        backgroundColor: 'cyan',
-        border: '5px solid yellow',
-        zIndex: 9999
-      }}>
-        <div style={{ color: 'black', fontSize: 24, padding: 10 }}>
-          TEST RECT<br/>
-          Frame: {frame}<br/>
-          Layers: {layers.length}<br/>
-          Scene: {scene?.id || 'none'}
-        </div>
-      </div>
       {/* Render layers */}
       {layers.map((layer) => (
         <Layer

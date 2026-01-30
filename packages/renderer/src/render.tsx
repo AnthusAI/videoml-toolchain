@@ -3,7 +3,7 @@ import { cpus } from "os";
 import { dirname, join } from "path";
 import { createRequire } from "module";
 import React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { renderToString } from "react-dom/server";
 import { clamp } from "./math.js";
 import { RendererProvider, type VideoConfig } from "./context.js";
 
@@ -150,19 +150,29 @@ const createPage = async (
 export const renderFrameToHtml = ({ component: Component, config, frame, inputProps }: RenderFrameOptions): string => {
   const maxFrame = Math.max(0, config.durationFrames - 1);
   const clampedFrame = clamp(Math.round(frame), 0, maxFrame);
-  const markup = renderToStaticMarkup(
-    <RendererProvider frame={clampedFrame} config={config}>
-      <Component {...(inputProps ?? {})} />
-    </RendererProvider>,
-  );
+
+  // For components that use hooks, we can't use SSR - we need client-side rendering
+  // So we create an empty container and will hydrate it in the browser
+  const markup = ""; // Empty - will be rendered client-side
+
+  // Serialize the render data for client-side hydration
+  const renderData = {
+    frame: clampedFrame,
+    config,
+    inputProps: inputProps ?? {},
+  };
+
   return [
     "<!doctype html>",
     "<html>",
     "<head>",
     '<meta charset="utf-8" />',
-    `<style>html,body{margin:0;padding:0;width:${config.width}px;height:${config.height}px;}</style>`,
+    `<style>html,body{margin:0;padding:0;width:${config.width}px;height:${config.height}px;overflow:hidden;background:#fdfdfd;}</style>`,
     "</head>",
-    `<body><div id="root" style="width:100%;height:100%">${markup}</div></body>`,
+    `<body>`,
+    `<div id="root" style="width:100%;height:100%">${markup}</div>`,
+    `<script>window.__RENDER_DATA__ = ${JSON.stringify(renderData)};</script>`,
+    "</body>",
     "</html>",
   ].join("");
 };
@@ -288,13 +298,89 @@ export const renderFramesToPng = async ({
   };
 
   const renderWithPage = async (page: PageAdapter) => {
+    // Check if browser bundle exists for client-side rendering (supports hooks)
+    const browserBundlePath = join(process.cwd(), 'public', 'browser-components.js');
+    const useBrowserBundle = existsSync(browserBundlePath);
+
+    if (useBrowserBundle) {
+      console.error('[Render] Using browser bundle for client-side rendering');
+    }
+
     for (;;) {
       const frame = takeNextFrame();
       if (frame == null) {
         return;
       }
-      const html = renderFrameToHtml({ ...options, frame });
-      await page.setContent(html, { waitUntil: "load" });
+
+      if (useBrowserBundle) {
+        // Client-side rendering with browser bundle (supports hooks)
+        const html = [
+          "<!doctype html>",
+          "<html>",
+          "<head>",
+          '<meta charset="utf-8" />',
+          `<style>html,body{margin:0;padding:0;width:${options.config.width}px;height:${options.config.height}px;overflow:hidden;background:#fdfdfd;}</style>`,
+          "</head>",
+          `<body>`,
+          `<div id="root" style="width:100%;height:100%;background:#fdfdfd;"></div>`,
+          "</body>",
+          "</html>",
+        ].join("");
+
+        await page.setContent(html, { waitUntil: "load" });
+
+        // Enable console logging from the page
+        page.on('console', (msg) => {
+          const type = msg.type();
+          if (type === 'error' || type === 'warning') {
+            console.error(`[Browser ${type}]`, msg.text());
+          }
+        });
+
+        // Load React and ReactDOM from CDN first
+        await page.addScriptTag({
+          url: 'https://unpkg.com/react@18/umd/react.production.min.js',
+        });
+        await page.addScriptTag({
+          url: 'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
+        });
+
+        // Load the browser bundle (which expects React/ReactDOM to be available)
+        await page.addScriptTag({ path: browserBundlePath });
+
+        // Call renderFrame with the data
+        const renderResult = await page.evaluate(
+          async ({ script, frame, config }) => {
+            try {
+              const renderFrame = (window as any).renderFrame;
+              if (!renderFrame) {
+                return { success: false, error: 'renderFrame function not found on window' };
+              }
+              await renderFrame({ script, frame, config, inputProps: {} });
+              return { success: true };
+            } catch (error: any) {
+              return { success: false, error: error.message };
+            }
+          },
+          {
+            script: options.inputProps?.script,
+            frame,
+            config: options.config,
+          }
+        );
+
+        if (!renderResult.success) {
+          console.error(`[Render] Frame ${frame} failed:`, renderResult.error);
+        }
+
+        // Wait a bit more for any animations to settle
+        await page.waitForTimeout(100);
+      } else {
+        // Fallback to SSR (doesn't support hooks)
+        const html = renderFrameToHtml({ ...options, frame });
+        await page.setContent(html, { waitUntil: "load" });
+      }
+
       const buffer = await page.screenshot({ type: "png" });
       const fileName = formatFrameName(framePattern, frame);
       const outPath = join(outDir, fileName);
