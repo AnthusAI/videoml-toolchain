@@ -345,7 +345,7 @@ export const renderFramesToPng = async ({
         await page.setContent(html, { waitUntil: "load" });
 
         // Enable console logging from the page
-        page.on('console', (msg) => {
+        page.on?.('console', (msg) => {
           const type = msg.type();
           if (type === 'error' || type === 'warning') {
             console.error(`[Browser ${type}]`, msg.text());
@@ -353,18 +353,18 @@ export const renderFramesToPng = async ({
         });
 
         // Load React and ReactDOM from CDN first
-        await page.addScriptTag({
+        await page.addScriptTag?.({
           url: 'https://unpkg.com/react@18/umd/react.production.min.js',
         });
-        await page.addScriptTag({
+        await page.addScriptTag?.({
           url: 'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
         });
 
         // Load the browser bundle (which expects React/ReactDOM to be available)
-        await page.addScriptTag({ path: browserBundlePath });
+        await page.addScriptTag?.({ path: browserBundlePath });
 
         // Call renderFrame with the data
-        const renderResult = await page.evaluate(
+        const renderResult = await page.evaluate?.(
           async ({ script, frame, config }) => {
             try {
               const renderFrame = (window as any).renderFrame;
@@ -384,12 +384,12 @@ export const renderFramesToPng = async ({
           }
         );
 
-        if (!renderResult.success) {
+        if (renderResult && !renderResult.success) {
           console.error(`[Render] Frame ${frame} failed:`, renderResult.error);
         }
 
         // Wait a bit more for any animations to settle
-        await page.waitForTimeout(100);
+        await page.waitForTimeout?.(100);
       } else {
         // Fallback to SSR (doesn't support hooks)
         const html = renderFrameToHtml({ ...options, frame });
