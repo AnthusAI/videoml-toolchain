@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync, readdirSync, unlinkSync, existsSync } from "fs";
 import { cpus } from "os";
-import { dirname, join } from "path";
+import { dirname, join, resolve, isAbsolute } from "path";
 import { createRequire } from "module";
 import React from "react";
 import { renderToString } from "react-dom/server";
@@ -36,6 +36,7 @@ export type RenderFramesPngOptions = Omit<RenderFrameOptions, "frame"> & {
   workers?: number;
   onFrame?: (frame: number, path: string) => void;
   cleanFrames?: boolean; // If true, delete existing frames before rendering (default: true)
+  browserBundlePath?: string;
 };
 
 export type RenderFramesHtmlOptions = Omit<RenderFrameOptions, "frame"> & {
@@ -299,7 +300,17 @@ export const renderFramesToPng = async ({
 
   const renderWithPage = async (page: PageAdapter) => {
     // Check if browser bundle exists for client-side rendering (supports hooks)
-    const browserBundlePath = join(process.cwd(), 'public', 'browser-components.js');
+    const resolvedBundlePath = options.browserBundlePath
+      ? (isAbsolute(options.browserBundlePath)
+          ? options.browserBundlePath
+          : resolve(process.cwd(), options.browserBundlePath))
+      : (process.env.BABULUS_BROWSER_BUNDLE
+          ? (isAbsolute(process.env.BABULUS_BROWSER_BUNDLE)
+              ? process.env.BABULUS_BROWSER_BUNDLE
+              : resolve(process.cwd(), process.env.BABULUS_BROWSER_BUNDLE))
+          : join(process.cwd(), 'public', 'browser-components.js'));
+
+    const browserBundlePath = resolvedBundlePath;
     const useBrowserBundle = existsSync(browserBundlePath);
 
     if (useBrowserBundle) {
