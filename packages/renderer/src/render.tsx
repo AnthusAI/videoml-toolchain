@@ -71,6 +71,10 @@ type PageAdapter = {
   setContent: (html: string, options?: { waitUntil?: "load" | "domcontentloaded" | "networkidle" }) => Promise<void>;
   screenshot: (options: { type: "png"; omitBackground?: boolean }) => Promise<Buffer>;
   close?: () => Promise<void>;
+  on?: (event: string, handler: (msg: any) => void) => void;
+  addScriptTag?: (options: { url?: string; path?: string }) => Promise<void>;
+  evaluate?: <T = any>(pageFunction: (...args: any[]) => T | Promise<T>, ...args: any[]) => Promise<T>;
+  waitForTimeout?: (timeout: number) => Promise<void>;
 };
 
 const require = createRequire(import.meta.url);
