@@ -23,7 +23,8 @@ export type RenderVideoOptions<TInputProps extends Record<string, unknown> = Rec
   ffmpegPath?: string;
   ffmpegArgs?: string[];
   browser?: RenderFramesPngOptions["browser"];
-  browserBundlePath?: RenderFramesPngOptions["browserBundlePath"];
+  browserBundlePath?: RenderFramesPngOptions["browserBundlePath"]; // Deprecated
+  browserBundlePaths?: RenderFramesPngOptions["browserBundlePaths"]; // Multiple bundles
   onFrame?: RenderFramesPngOptions["onFrame"];
   cleanFrames?: boolean; // If true, delete existing frames before rendering (default: true)
   renderFrames?: (options: RenderFramesPngOptions) => Promise<RenderFramesResult>;
@@ -52,6 +53,7 @@ export const renderVideo = async <TInputProps extends Record<string, unknown> = 
   ffmpegArgs,
   browser,
   browserBundlePath,
+  browserBundlePaths,
   onFrame,
   cleanFrames,
   renderFrames,
@@ -72,6 +74,7 @@ export const renderVideo = async <TInputProps extends Record<string, unknown> = 
     workers,
     browser,
     browserBundlePath,
+    browserBundlePaths,
     onFrame,
     cleanFrames,
   };
@@ -80,28 +83,22 @@ export const renderVideo = async <TInputProps extends Record<string, unknown> = 
     throw new Error("No frames rendered.");
   }
 
-  // Skip encoding if we're only rendering a small number of frames for preview
-  // or if the frame range doesn't start at 0 (which would cause ffmpeg to fail)
-  const shouldSkipEncoding =
-    (startFrame !== undefined && startFrame > 0) ||
-    (startFrame !== undefined && endFrame !== undefined && (endFrame - startFrame) < 10);
-
-  if (!shouldSkipEncoding) {
-    await encoder(
-      {
-        framesDir,
-        fps: config.fps,
-        outputPath,
-        audioPath,
-        framePattern,
-        ffmpegPath,
-        ffmpegArgs,
-      },
-      encodeRunner,
-    );
-  } else {
-    console.error(`[Pipeline] Skipping video encoding (rendering frames ${startFrame ?? 0}-${endFrame ?? config.durationFrames} for preview)`);
-  }
+  // Always encode video, even in preview mode
+  // For preview mode with non-zero start, ffmpeg will use start_number to find the correct frames
+  await encoder(
+    {
+      framesDir,
+      fps: config.fps,
+      outputPath,
+      audioPath,
+      framePattern,
+      startNumber: startFrame, // Pass startFrame so ffmpeg knows where frames begin
+      frameCount: framesResult.frames.length, // Number of frames actually rendered
+      ffmpegPath,
+      ffmpegArgs,
+    },
+    encodeRunner,
+  );
 
   return { frames: framesResult.frames, outputPath };
 };

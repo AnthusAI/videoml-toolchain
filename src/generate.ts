@@ -12,6 +12,7 @@ import { getMusicProvider } from "./providers/music/registry.js";
 import { type CompositionSpec, type PauseSpec, type SceneSpec, type VoiceSegmentSpec, type AudioClipSpec } from "./dsl/types.js";
 import { pause as pauseHelper } from "./dsl/pause.js";
 import { concatAudioFiles, estimateTrailingSilenceSec, probeDurationSec, trimAudioToDuration } from "./media.js";
+import { writeSilenceWav } from "./audio/wav.js";
 import { loadSelections, selectionPath } from "./sfx-workflow.js";
 import { ensureDictionaryFromRules, rulesHash, type PronunciationRule } from "./elevenlabs-pronunciation.js";
 import { ElevenLabsTTSProvider } from "./providers/tts/elevenlabs.js";
@@ -198,6 +199,14 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     }
     now = leadInSec;
     timelineItems.push({ type: "lead_in", startSec: 0, endSec: now, seconds: now });
+
+    // Generate silence audio file for lead-in
+    const silenceKey = hashKey({ kind: "silence", durationSec: leadInSec, sampleRateHz });
+    const silencePath = join(segmentsDir, `silence-${safePrefix(silenceKey)}.wav`);
+    if (!existsSync(silencePath)) {
+      writeSilenceWav(silencePath, leadInSec, sampleRateHz);
+    }
+    segmentPathsForConcat.push(silencePath);
   }
 
   const recordUsageEvent = (entry: Omit<UsageEntry, "timestamp">) => {
@@ -226,6 +235,14 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
             const start = now;
             now += pause;
             timelineItems.push({ type: "pause", sceneId: scene.id, startSec: start, endSec: now, seconds: pause });
+
+            // Generate silence audio file for this pause
+            const silenceKey = hashKey({ kind: "silence", durationSec: pause, sampleRateHz });
+            const silencePath = join(segmentsDir, `silence-${safePrefix(silenceKey)}.wav`);
+            if (!existsSync(silencePath)) {
+              writeSilenceWav(silencePath, pause, sampleRateHz);
+            }
+            segmentPathsForConcat.push(silencePath);
           }
         }
       }
@@ -235,6 +252,15 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
         const start = now;
         now += pauseSec;
         timelineItems.push({ type: "pause", sceneId: scene.id, startSec: start, endSec: now, seconds: pauseSec });
+
+        // Generate silence audio file for this pause
+        const silenceKey = hashKey({ kind: "silence", durationSec: pauseSec, sampleRateHz });
+        const silencePath = join(segmentsDir, `silence-${safePrefix(silenceKey)}.wav`);
+        if (!existsSync(silencePath)) {
+          writeSilenceWav(silencePath, pauseSec, sampleRateHz);
+        }
+        segmentPathsForConcat.push(silencePath);
+
         continue;
       }
 
@@ -249,6 +275,15 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
           const segStart = now;
           now += pauseSec;
           cueSegments.push({ type: "pause", startSec: segStart, endSec: now, seconds: pauseSec });
+
+          // Generate silence audio file for this pause
+          const silenceKey = hashKey({ kind: "silence", durationSec: pauseSec, sampleRateHz });
+          const silencePath = join(segmentsDir, `silence-${safePrefix(silenceKey)}.wav`);
+          if (!existsSync(silencePath)) {
+            writeSilenceWav(silencePath, pauseSec, sampleRateHz);
+          }
+          segmentPathsForConcat.push(silencePath);
+
           continue;
         }
 
@@ -268,8 +303,10 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
 
         const cached = resolveCachedSegment(outDir, currentEnv, segKey, scene.id, cue.id, occurrence, ttsExt, _log);
         let duration: number;
-        if (cached.path && !fresh) {
-          segPath = cached.path;
+        // Verify the cached file actually exists before using it
+        const cacheValid = cached.path && !fresh && existsSync(cached.path);
+        if (cacheValid) {
+          segPath = cached.path!;
           duration = getManifestDuration(manifest, "segments", segPath, segKey) ?? probeDurationSec(segPath);
           if (cached.env !== currentEnv) {
             _log(`tts: fallback scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} using env=${cached.env}`);
@@ -277,6 +314,10 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
             _log(`tts: cache scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} key=${safePrefix(segKey).slice(0, 8)}`);
           }
         } else {
+          // Log if cache entry exists but file is missing
+          if (cached.path && !fresh && !existsSync(cached.path)) {
+            _log(`tts: cache miss scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} (manifest entry exists but file missing)`);
+          }
           _log(`tts: synth scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} -> ${segPath.split(sep).pop()}`);
           try {
             const seg = await provider.synthesize(
@@ -405,6 +446,13 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
         text: cue.segments.filter(isTextSegment).map((s) => s.text).join(" ").trim(),
         bullets: cue.bullets.map(makeBullet),
         markup: cue.markup,
+        segments: cueSegments.map(seg => ({
+          type: seg.type as "tts" | "pause",
+          startSec: seg.startSec as number,
+          endSec: seg.endSec as number,
+          text: seg.text as string | undefined,
+          durationSec: seg.seconds as number | undefined,
+        })),
       });
       if (cueStartIndex[cue.id] != null) {
         throw new CompileError(`Duplicate cue id across scenes: "${cue.id}"`);
@@ -420,6 +468,18 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
 
     const sceneEndHint = scene.time ? scene.time.end : null;
     now = Math.max(now, sceneEndHint ?? now);
+    // Inject sceneStartSec into component props
+    const layersWithSceneStart = scene.layers?.map(layer => ({
+      ...layer,
+      components: layer.components.map(comp => ({
+        ...comp,
+        props: {
+          ...(comp.props || {}),
+          sceneStartSec: sceneStart,
+        },
+      })),
+    }));
+
     outScenes.push({
       id: scene.id,
       title: scene.title,
@@ -428,7 +488,7 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
       cues: cuesOut,
       markup: scene.markup,
       styles: scene.styles,
-      layers: scene.layers,
+      layers: layersWithSceneStart,
       components: scene.components,
     });
     if (sceneStartIndex[scene.id] != null) {
