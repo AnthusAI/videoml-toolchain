@@ -10,12 +10,26 @@ export type MarkupValue =
 
 export type SemanticMarkup = Record<string, MarkupValue>;
 
+/**
+ * Segment-level timing for individual voice.say() calls within a cue.
+ * This enables components to animate elements in sync with specific
+ * parts of the voiceover.
+ */
+export type ScriptSegment = {
+  type: "tts" | "pause";
+  startSec: number;
+  endSec: number;
+  text?: string;        // For TTS segments
+  durationSec?: number; // For pause segments
+};
+
 export type ScriptCue = {
   id?: string | null;
   label?: string | null;
   text?: string | null;
   startSec?: number;
   endSec?: number;
+  segments?: ScriptSegment[];  // Segment-level timing for each voice.say()
   markup?: SemanticMarkup;
 };
 
@@ -107,9 +121,11 @@ export const getActiveScene = (script?: ScriptData | null, timeSec = 0): ScriptS
   const scenes = script?.scenes ?? [];
   for (const scene of scenes) {
     if (isActiveRange(timeSec, scene.startSec, scene.endSec)) {
+      console.log(`[getActiveScene] timeSec=${timeSec}, found scene=${scene.id} (${scene.startSec}-${scene.endSec}), markup=`, JSON.stringify(scene.markup));
       return scene;
     }
   }
+  console.log(`[getActiveScene] timeSec=${timeSec}, NO SCENE FOUND`);
   return null;
 };
 

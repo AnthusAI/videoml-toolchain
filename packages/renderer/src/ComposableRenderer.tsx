@@ -32,8 +32,11 @@ export const ComposableRenderer = ({ script }: ComposableRendererProps) => {
   const components: ComponentSpec[] = (scene?.components as ComponentSpec[] | undefined) || [];
 
   // Apply scene-level background (default white)
-  const sceneBackground = sceneStyles.background || "#fdfdfd";
-  console.log('[ComposableRenderer] sceneBackground:', sceneBackground, 'sceneStyles:', sceneStyles);
+  // Check both styles and markup for background (markup takes precedence for backward compatibility)
+  const sceneBackground = (sceneMarkup.background as string) || sceneStyles.background || "#fdfdfd";
+  console.log('[ComposableRenderer] scene:', scene);
+  console.log('[ComposableRenderer] sceneMarkup.background:', sceneMarkup.background);
+  console.log('[ComposableRenderer] sceneBackground:', sceneBackground, 'sceneStyles:', sceneStyles, 'sceneMarkup:', sceneMarkup);
 
   return (
     <div

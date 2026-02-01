@@ -36,26 +36,43 @@ export function TitleComponent(props: TitleProps) {
 
   const resolvedTextAlign = textAlign ?? styles.textAlign ?? "left";
 
-  // For center-aligned text, use transform to center around the position
-  const transform = resolvedTextAlign === "center" ? "translateX(-50%)" : undefined;
+  // For center-aligned text, center the container and make content centered within
+  const containerStyle: React.CSSProperties = {
+    position: "absolute",
+    top: position.y,
+    fontSize: fontSize ?? styles.fontSize ?? 48,
+    fontWeight: fontWeight ?? styles.fontWeight ?? 700,
+    fontFamily: styles.fontFamily ?? "ui-sans-serif, system-ui, sans-serif",
+    opacity: styles._computedOpacity ?? 1,
+  };
+
+  if (resolvedTextAlign === "center") {
+    // For centered titles, use left:50% and translateX(-50%) on the span itself
+    containerStyle.left = "50%";
+    containerStyle.display = "inline-block";
+  } else {
+    // For left-aligned titles, position at the specified x
+    containerStyle.left = position.x;
+    containerStyle.textAlign = resolvedTextAlign;
+  }
+
+  const spanStyle: React.CSSProperties = {
+    display: "inline-block",
+    padding: "0.18em 0.22em",
+    backgroundColor: color ?? styles.color ?? "#c7007e",
+    color: "#ffffff",
+    lineHeight: 1,
+  };
+
+  if (resolvedTextAlign === "center") {
+    spanStyle.transform = "translateX(-50%)";
+  }
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
-        fontSize: fontSize ?? styles.fontSize ?? 48,
-        fontWeight: fontWeight ?? styles.fontWeight ?? 700,
-        color: color ?? styles.color ?? "#ffffff",
-        textAlign: resolvedTextAlign,
-        fontFamily: styles.fontFamily ?? "ui-sans-serif, system-ui, sans-serif",
-        opacity: styles._computedOpacity ?? 1,
-        whiteSpace: "nowrap",
-        transform,
-      }}
-    >
-      {displayText}
+    <div style={containerStyle}>
+      <span style={spanStyle}>
+        {displayText}
+      </span>
     </div>
   );
 }

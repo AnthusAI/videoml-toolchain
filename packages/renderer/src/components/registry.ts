@@ -23,7 +23,15 @@ export function getComponent(name: string | ComponentType): ComponentType | null
   if (typeof name === "function") {
     return name; // Already a React component
   }
-  return registry.get(name) || null;
+
+  const result = registry.get(name);
+
+  if (!result) {
+    const keys = Array.from(registry.keys());
+    console.error(`[Registry] Component "${name}" not found. Available:`, keys);
+  }
+
+  return result || null;
 }
 
 export function listComponents(): string[] {

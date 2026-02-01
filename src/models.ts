@@ -2,6 +2,18 @@ import { slugify } from "./util.js";
 import type { SemanticMarkup, VisualStyles, LayerSpec, ComponentSpec } from "./dsl/types.js";
 
 export type Bullet = { id: string; text: string };
+
+/**
+ * Segment-level timing for individual voice.say() calls within a cue.
+ */
+export type CueSegment = {
+  type: "tts" | "pause";
+  startSec: number;
+  endSec: number;
+  text?: string;
+  durationSec?: number;
+};
+
 export type CuePoint = {
   id: string;
   label: string;
@@ -9,6 +21,7 @@ export type CuePoint = {
   endSec: number;
   text: string;
   bullets: Bullet[];
+  segments?: CueSegment[];
   markup?: SemanticMarkup;
 };
 
@@ -60,6 +73,7 @@ export function scriptToJson(script: Script): Record<string, unknown> {
         endSec: cue.endSec,
         text: cue.text,
         ...(cue.markup ? { markup: cue.markup } : {}),
+        ...(cue.segments ? { segments: cue.segments } : {}),
         bullets: cue.bullets.map((b) => ({ id: b.id, text: b.text })),
       })),
     })),

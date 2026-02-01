@@ -36,7 +36,8 @@ export type RenderFramesPngOptions = Omit<RenderFrameOptions, "frame"> & {
   workers?: number;
   onFrame?: (frame: number, path: string) => void;
   cleanFrames?: boolean; // If true, delete existing frames before rendering (default: true)
-  browserBundlePath?: string;
+  browserBundlePath?: string; // Deprecated: use browserBundlePaths instead
+  browserBundlePaths?: string[]; // Multiple bundles to load in order (standard + custom)
 };
 
 export type RenderFramesHtmlOptions = Omit<RenderFrameOptions, "frame"> & {
@@ -303,23 +304,41 @@ export const renderFramesToPng = async ({
   };
 
   const renderWithPage = async (page: PageAdapter) => {
-    // Check if browser bundle exists for client-side rendering (supports hooks)
-    const resolvedBundlePath = options.browserBundlePath
-      ? (isAbsolute(options.browserBundlePath)
-          ? options.browserBundlePath
-          : resolve(process.cwd(), options.browserBundlePath))
-      : (process.env.BABULUS_BROWSER_BUNDLE
-          ? (isAbsolute(process.env.BABULUS_BROWSER_BUNDLE)
-              ? process.env.BABULUS_BROWSER_BUNDLE
-              : resolve(process.cwd(), process.env.BABULUS_BROWSER_BUNDLE))
-          : join(process.cwd(), 'public', 'browser-components.js'));
+    // Resolve browser bundle paths - support both single and multiple bundles
+    let bundlePaths: string[] = [];
 
-    const browserBundlePath = resolvedBundlePath;
-    const useBrowserBundle = existsSync(browserBundlePath);
+    if (options.browserBundlePaths) {
+      // New API: multiple bundles (e.g., standard + custom)
+      bundlePaths = options.browserBundlePaths.map(path =>
+        isAbsolute(path) ? path : resolve(process.cwd(), path)
+      );
+    } else if (options.browserBundlePath) {
+      // Legacy API: single bundle
+      const resolvedPath = isAbsolute(options.browserBundlePath)
+        ? options.browserBundlePath
+        : resolve(process.cwd(), options.browserBundlePath);
+      bundlePaths = [resolvedPath];
+    } else if (process.env.BABULUS_BROWSER_BUNDLE) {
+      // Environment variable fallback
+      const resolvedPath = isAbsolute(process.env.BABULUS_BROWSER_BUNDLE)
+        ? process.env.BABULUS_BROWSER_BUNDLE
+        : resolve(process.cwd(), process.env.BABULUS_BROWSER_BUNDLE);
+      bundlePaths = [resolvedPath];
+    } else {
+      // Default: look for standard bundle
+      bundlePaths = [join(process.cwd(), 'public', 'babulus-standard.js')];
+    }
+
+    // Filter to only existing bundles
+    const existingBundles = bundlePaths.filter(path => existsSync(path));
+    const useBrowserBundle = existingBundles.length > 0;
 
     if (useBrowserBundle) {
-      console.error('[Render] Using browser bundle for client-side rendering');
+      console.error(`[Render] Using browser bundles for client-side rendering: ${existingBundles.join(', ')}`);
     }
+
+    // For browser bundle mode, set up the page once with all scripts loaded
+    let pageInitialized = false;
 
     for (;;) {
       const frame = takeNextFrame();
@@ -328,40 +347,50 @@ export const renderFramesToPng = async ({
       }
 
       if (useBrowserBundle) {
-        // Client-side rendering with browser bundle (supports hooks)
-        const html = [
-          "<!doctype html>",
-          "<html>",
-          "<head>",
-          '<meta charset="utf-8" />',
-          `<style>html,body{margin:0;padding:0;width:${options.config.width}px;height:${options.config.height}px;overflow:hidden;background:#fdfdfd;}</style>`,
-          "</head>",
-          `<body>`,
-          `<div id="root" style="width:100%;height:100%;background:#fdfdfd;"></div>`,
-          "</body>",
-          "</html>",
-        ].join("");
+        // Initialize page with bundles only once per worker
+        if (!pageInitialized) {
+          // Client-side rendering with browser bundle (supports hooks)
+          const html = [
+            "<!doctype html>",
+            "<html>",
+            "<head>",
+            '<meta charset="utf-8" />',
+            `<style>html,body{margin:0;padding:0;width:${options.config.width}px;height:${options.config.height}px;overflow:hidden;background:#fdfdfd;}</style>`,
+            "</head>",
+            `<body>`,
+            `<div id="root" style="width:100%;height:100%;background:#fdfdfd;"></div>`,
+            "</body>",
+            "</html>",
+          ].join("");
 
-        await page.setContent(html, { waitUntil: "load" });
+          await page.setContent(html, { waitUntil: "load" });
 
-        // Enable console logging from the page
-        page.on?.('console', (msg) => {
-          const type = msg.type();
-          if (type === 'error' || type === 'warning') {
-            console.error(`[Browser ${type}]`, msg.text());
+          // Enable console logging from the page
+          page.on?.('console', (msg) => {
+            const type = msg.type();
+            const prefix = `[Browser ${type}]`;
+            if (type === 'error' || type === 'warning') {
+              console.error(prefix, msg.text());
+            } else {
+              console.log(prefix, msg.text());
+            }
+          });
+
+          // Load React and ReactDOM from CDN first
+          await page.addScriptTag?.({
+            url: 'https://unpkg.com/react@18/umd/react.production.min.js',
+          });
+          await page.addScriptTag?.({
+            url: 'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
+          });
+
+          // Load all browser bundles in order (standard + custom components)
+          for (const bundlePath of existingBundles) {
+            await page.addScriptTag?.({ path: bundlePath });
           }
-        });
 
-        // Load React and ReactDOM from CDN first
-        await page.addScriptTag?.({
-          url: 'https://unpkg.com/react@18/umd/react.production.min.js',
-        });
-        await page.addScriptTag?.({
-          url: 'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
-        });
-
-        // Load the browser bundle (which expects React/ReactDOM to be available)
-        await page.addScriptTag?.({ path: browserBundlePath });
+          pageInitialized = true;
+        }
 
         // Call renderFrame with the data
         const renderResult = await page.evaluate?.(

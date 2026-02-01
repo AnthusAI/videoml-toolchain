@@ -6,7 +6,7 @@
  */
 
 import type { CompositionSpec, SceneSpec, CueSpec, VoiceSegmentSpec, LayerSpec, ComponentSpec } from "babulus/dsl";
-import type { ScriptData, ScriptScene, ScriptCue } from "./video.js";
+import type { ScriptData, ScriptScene, ScriptCue, ScriptSegment } from "./video.js";
 
 /**
  * Strategy for generating placeholder timing when actual TTS timing is unavailable.
@@ -101,12 +101,16 @@ function transformScene(
       // Extract text from voice segments
       const text = extractTextFromSegments(cueSpec.segments);
 
+      // Generate placeholder segment timing
+      const segments = transformCueSegments(cueSpec.segments, cueStart, cueDuration);
+
       cues.push({
         id: cueSpec.id,
         label: cueSpec.label,
         text,
         startSec: cueStart,
         endSec: cueEnd,
+        segments,
         markup: cueSpec.markup,
       });
     });
@@ -137,6 +141,49 @@ function extractTextFromSegments(segments: VoiceSegmentSpec[]): string {
     .filter(seg => seg.kind === 'text')
     .map(seg => (seg as { text: string }).text)
     .join(' ');
+}
+
+/**
+ * Transforms VoiceSegmentSpec array into ScriptSegment array with placeholder timing.
+ * Distributes the cue duration evenly across text segments, with small gaps for pauses.
+ */
+function transformCueSegments(
+  segments: VoiceSegmentSpec[],
+  cueStartSec: number,
+  cueDurationSec: number
+): ScriptSegment[] {
+  const result: ScriptSegment[] = [];
+  const textSegs = segments.filter(s => s.kind === 'text');
+  const pauseSegs = segments.filter(s => s.kind === 'pause');
+
+  // Reserve some time for pauses
+  const pauseDuration = 0.3; // Placeholder pause duration
+  const totalPauseTime = pauseSegs.length * pauseDuration;
+  const availableForText = Math.max(0.5, cueDurationSec - totalPauseTime);
+  const segDuration = availableForText / Math.max(1, textSegs.length);
+
+  let currentTime = cueStartSec;
+  for (const seg of segments) {
+    if (seg.kind === 'text') {
+      const textSeg = seg as { kind: 'text'; text: string };
+      result.push({
+        type: 'tts',
+        startSec: currentTime,
+        endSec: currentTime + segDuration,
+        text: textSeg.text,
+      });
+      currentTime += segDuration;
+    } else if (seg.kind === 'pause') {
+      result.push({
+        type: 'pause',
+        startSec: currentTime,
+        endSec: currentTime + pauseDuration,
+        durationSec: pauseDuration,
+      });
+      currentTime += pauseDuration;
+    }
+  }
+  return result;
 }
 
 /**
