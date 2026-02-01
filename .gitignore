@@ -39,9 +39,15 @@ pnpm-debug.log*
 
 # Babulus specific
 .babulus/
+public/babulus/*.wav
+public/babulus/*.mp4
+public/browser-components.js
+test-projects/**/generated/
 
 # Amplify
 amplify_outputs.json
+apps/studio-web/.amplify/
+apps/studio-web/amplify/functions/**/package-lock.json
 
 # IDE
 .vscode/
