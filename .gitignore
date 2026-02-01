@@ -38,8 +38,7 @@ pnpm-debug.log*
 *.tsbuildinfo
 
 # Babulus specific
-.babulus/config.yml
-.babulus/out/
+.babulus/
 
 # Amplify
 amplify_outputs.json
