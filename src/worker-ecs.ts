@@ -24,23 +24,73 @@ import { WebSocket } from 'ws';
 // @ts-ignore
 global.WebSocket = WebSocket;
 
-// Load Amplify config from environment variable or file
-const amplifyConfig = process.env.AMPLIFY_OUTPUTS
-  ? JSON.parse(process.env.AMPLIFY_OUTPUTS)
-  : existsSync('/app/amplify_outputs.json')
-  ? JSON.parse(readFileSync('/app/amplify_outputs.json', 'utf8'))
-  : JSON.parse(readFileSync('amplify_outputs.json', 'utf8'));
+/**
+ * Load Amplify config from environment variable, S3, or file
+ */
+async function loadAmplifyConfig() {
+  // Try environment variable first
+  if (process.env.AMPLIFY_OUTPUTS && process.env.AMPLIFY_OUTPUTS !== '{}') {
+    console.log('Loading Amplify config from AMPLIFY_OUTPUTS env var');
+    return JSON.parse(process.env.AMPLIFY_OUTPUTS);
+  }
 
-Amplify.configure(amplifyConfig);
+  // Try downloading from S3 (fallback for when AMPLIFY_OUTPUTS is empty)
+  if (process.env.S3_BUCKET) {
+    try {
+      const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
+      const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
-const client = generateClient<any>({
-  authMode: 'userPool'
-});
+      const command = new GetObjectCommand({
+        Bucket: process.env.S3_BUCKET,
+        Key: 'config/amplify_outputs.json'
+      });
 
-const storage = {
-  uploadData,
-  downloadData
-};
+      console.log(`Downloading amplify_outputs.json from S3 bucket: ${process.env.S3_BUCKET}`);
+      const response = await s3.send(command);
+      const body = await response.Body?.transformToString();
+      if (body) {
+        console.log('✓ Loaded Amplify config from S3');
+        return JSON.parse(body);
+      }
+    } catch (err: any) {
+      console.warn('Could not load from S3:', err.message);
+    }
+  }
+
+  // Fallback to local file
+  if (existsSync('/app/amplify_outputs.json')) {
+    console.log('Loading Amplify config from /app/amplify_outputs.json');
+    return JSON.parse(readFileSync('/app/amplify_outputs.json', 'utf8'));
+  }
+
+  if (existsSync('amplify_outputs.json')) {
+    console.log('Loading Amplify config from amplify_outputs.json');
+    return JSON.parse(readFileSync('amplify_outputs.json', 'utf8'));
+  }
+
+  throw new Error('Could not load Amplify configuration from any source');
+}
+
+// These will be initialized in main()
+let client: any;
+let storage: any;
+
+/**
+ * Initialize Amplify client
+ */
+async function initializeAmplify() {
+  const amplifyConfig = await loadAmplifyConfig();
+  Amplify.configure(amplifyConfig);
+
+  client = generateClient<any>({
+    authMode: 'userPool'
+  });
+
+  storage = {
+    uploadData,
+    downloadData
+  };
+}
 
 /**
  * Authenticate worker with Cognito
@@ -123,6 +173,7 @@ async function main() {
     console.log(`Platform: ${process.platform}`);
     console.log(`Architecture: ${process.arch}`);
 
+    await initializeAmplify();
     await login();
     await processOneJob();
 
