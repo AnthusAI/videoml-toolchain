@@ -86,8 +86,21 @@ async function initializeAmplify() {
     authMode: 'userPool'
   });
 
+  // Use AWS SDK S3 directly instead of Amplify Storage (which uses browser APIs like FileReader)
+  const { S3Client, PutObjectCommand, GetObjectCommand } = await import('@aws-sdk/client-s3');
+  const s3Client = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
+  const bucket = process.env.S3_BUCKET || amplifyConfig.storage.bucket_name;
+
   storage = {
-    uploadData,
+    async uploadData({ path, data, options }: any) {
+      await s3Client.send(new PutObjectCommand({
+        Bucket: bucket,
+        Key: path,
+        Body: data,
+        ContentType: options?.contentType
+      }));
+      return { result: Promise.resolve({ path }) };
+    },
     downloadData
   };
 }
