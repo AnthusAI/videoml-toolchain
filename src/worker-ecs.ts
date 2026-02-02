@@ -92,14 +92,16 @@ async function initializeAmplify() {
   const bucket = process.env.S3_BUCKET || amplifyConfig.storage.bucket_name;
 
   storage = {
-    async uploadData({ path, data, options }: any) {
-      await s3Client.send(new PutObjectCommand({
+    uploadData({ path, data, options }: any) {
+      // Return synchronously with a promise that resolves after upload
+      const uploadPromise = s3Client.send(new PutObjectCommand({
         Bucket: bucket,
         Key: path,
         Body: data,
         ContentType: options?.contentType
-      }));
-      return { result: Promise.resolve({ path }) };
+      })).then(() => ({ path }));
+
+      return { result: uploadPromise };
     },
     downloadData
   };
