@@ -5,7 +5,7 @@
  * Placeholder timing provides "good enough" preview for visual verification.
  */
 
-import type { CompositionSpec, SceneSpec, CueSpec, VoiceSegmentSpec, LayerSpec, ComponentSpec } from "babulus/dsl";
+import type { CompositionSpec, SceneSpec, CueSpec, VoiceSegmentSpec, LayerSpec, ComponentSpec, PauseSpec } from "babulus/dsl";
 import type { ScriptData, ScriptScene, ScriptCue, ScriptSegment } from "./video.js";
 
 /**
@@ -59,6 +59,8 @@ export function dslToScriptData(
   };
 }
 
+const isCueSpec = (item: CueSpec | PauseSpec): item is CueSpec => item.kind === "cue";
+
 /**
  * Transforms a single scene with placeholder timing.
  */
@@ -78,7 +80,7 @@ function transformScene(
     sceneDuration = sceneSpec.time.end - sceneStart;
   } else if (strategy.type === 'cue-count') {
     // Estimate based on cue count
-    const cueCount = sceneSpec.items.filter(item => item.kind === 'cue').length;
+    const cueCount = sceneSpec.items.filter(isCueSpec).length;
     sceneDuration = Math.max(1, cueCount * strategy.secondsPerCue);
   } else {
     // Uniform distribution
@@ -89,7 +91,7 @@ function transformScene(
 
   // Transform cues with timing
   const cues: ScriptCue[] = [];
-  const cueItems = sceneSpec.items.filter(item => item.kind === 'cue') as CueSpec[];
+  const cueItems = sceneSpec.items.filter(isCueSpec);
 
   if (cueItems.length > 0) {
     const cueDuration = sceneDuration / cueItems.length;

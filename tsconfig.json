@@ -3,6 +3,12 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "babulus": ["src/index.ts"],
+      "babulus/dsl": ["src/dsl/index.ts"],
+      "babulus/*": ["src/*"]
+    },
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
