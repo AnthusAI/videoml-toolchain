@@ -8,6 +8,7 @@ import { cascadeMarkup, type CascadedMarkup } from "./markup/cascade.ts";
 
 export type ComposableRendererProps = {
   script: ScriptData;
+  debugLayout?: boolean;
 };
 
 function getScriptDuration(script: ScriptData): number {
@@ -17,7 +18,7 @@ function getScriptDuration(script: ScriptData): number {
   return Math.max(metaDuration, sceneMax);
 }
 
-export const ComposableRenderer = ({ script }: ComposableRendererProps) => {
+export const ComposableRenderer = ({ script, debugLayout }: ComposableRendererProps) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const timeSec = frame / fps;
@@ -33,11 +34,8 @@ export const ComposableRenderer = ({ script }: ComposableRendererProps) => {
 
   // Apply scene-level background (default white)
   // Check both styles and markup for background (markup takes precedence for backward compatibility)
-  const sceneBackground = (sceneMarkup.background as string) || sceneStyles.background || "#fdfdfd";
-  console.log('[ComposableRenderer] scene:', scene);
-  console.log('[ComposableRenderer] sceneMarkup.background:', sceneMarkup.background);
-  console.log('[ComposableRenderer] sceneBackground:', sceneBackground, 'sceneStyles:', sceneStyles, 'sceneMarkup:', sceneMarkup);
-
+  const sceneBackground = (sceneMarkup.background as string) || sceneStyles.background || "transparent";
+  const sceneVars = sceneStyles.vars ?? {};
   return (
     <div
       style={{
@@ -46,6 +44,7 @@ export const ComposableRenderer = ({ script }: ComposableRendererProps) => {
         position: "relative",
         background: sceneBackground,
         fontFamily: sceneStyles.fontFamily || "ui-sans-serif, system-ui, sans-serif",
+        ...(sceneVars as Record<string, string>),
         opacity: sceneStyles.opacity,
       }}
     >
@@ -64,6 +63,7 @@ export const ComposableRenderer = ({ script }: ComposableRendererProps) => {
           width={width}
           height={height}
           progressPct={progressPct}
+          debugLayout={debugLayout}
         />
       ))}
 
@@ -84,6 +84,7 @@ export const ComposableRenderer = ({ script }: ComposableRendererProps) => {
           width={width}
           height={height}
           progressPct={progressPct}
+          debugLayout={debugLayout}
         />
       ))}
     </div>
@@ -105,6 +106,7 @@ function Layer({
   width,
   height,
   progressPct,
+  debugLayout,
 }: {
   layer: LayerSpec;
   sceneStyles: VisualStyles;
@@ -117,6 +119,7 @@ function Layer({
   width: number;
   height: number;
   progressPct: number;
+  debugLayout?: boolean;
 }) {
   // Check layer visibility
   if (layer.visible === false) return null;
@@ -161,6 +164,7 @@ function Layer({
           width={width}
           height={height}
           progressPct={progressPct}
+          debugLayout={debugLayout}
         />
       ))}
     </div>
@@ -184,6 +188,7 @@ function Component({
   width,
   height,
   progressPct,
+  debugLayout,
 }: {
   spec: ComponentSpec;
   sceneStyles: VisualStyles;
@@ -198,6 +203,7 @@ function Component({
   width: number;
   height: number;
   progressPct: number;
+  debugLayout?: boolean;
 }) {
   // Check visibility
   if (spec.visible === false) return null;
@@ -244,6 +250,7 @@ function Component({
     videoWidth: width,
     videoHeight: height,
     progress: progressPct, // For ProgressBar
+    debugLayout: !!debugLayout,
   };
 
   // Apply bindings

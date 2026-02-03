@@ -107,6 +107,11 @@ export function FlexPageLayout({
 
   const headerJustify = headerAlign === "center" ? "center" : "flex-start";
   const headerTextAlign = headerAlign === "center" ? "center" : "left";
+  const fontEyebrow = "var(--font-eyebrow, ui-sans-serif, system-ui, sans-serif)";
+  const fontHeadline = "var(--font-headline, ui-sans-serif, system-ui, sans-serif)";
+  const fontSubhead = "var(--font-subhead, ui-sans-serif, system-ui, sans-serif)";
+  const colorText = "var(--color-text, #ffffff)";
+  const colorTextMuted = "var(--color-text-muted, rgba(255,255,255,0.7))";
 
   return (
     <div
@@ -153,8 +158,9 @@ export function FlexPageLayout({
                 fontSize: 20,
                 letterSpacing: 2,
                 textTransform: "uppercase",
-                color: "rgba(255,255,255,0.7)",
+                color: colorTextMuted,
                 fontWeight: 600,
+                fontFamily: fontEyebrow,
               }}
             >
               {label}
@@ -166,8 +172,9 @@ export function FlexPageLayout({
                 fontSize: 18,
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
-                color: "rgba(255,255,255,0.65)",
+                color: colorTextMuted,
                 fontWeight: 600,
+                fontFamily: fontEyebrow,
               }}
             >
               {eyebrow}
@@ -178,10 +185,11 @@ export function FlexPageLayout({
               style={{
                 fontSize: 64,
                 fontWeight: 700,
-                color: "#ffffff",
+                color: colorText,
                 textAlign: headerTextAlign,
                 lineHeight: 1.05,
                 wordBreak: "break-word",
+                fontFamily: fontHeadline,
               }}
             >
               {title}
@@ -192,9 +200,10 @@ export function FlexPageLayout({
               style={{
                 fontSize: 28,
                 fontWeight: 400,
-                color: "rgba(255,255,255,0.75)",
+                color: colorTextMuted,
                 textAlign: headerTextAlign,
                 wordBreak: "break-word",
+                fontFamily: fontSubhead,
               }}
             >
               {subtitle}

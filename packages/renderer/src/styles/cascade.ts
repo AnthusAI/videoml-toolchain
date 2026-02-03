@@ -28,6 +28,12 @@ export function cascadeStyles(
   layerStyles: VisualStyles = {},
   componentStyles: VisualStyles = {}
 ): CascadedStyles {
+  const mergedVars = {
+    ...(sceneStyles.vars ?? {}),
+    ...(layerStyles.vars ?? {}),
+    ...(componentStyles.vars ?? {}),
+  };
+
   // Opacity multiplies down the cascade
   const sceneOpacity = sceneStyles.opacity ?? 1;
   const layerOpacity = layerStyles.opacity ?? 1;
@@ -42,6 +48,7 @@ export function cascadeStyles(
     ...layerStyles,
     // Component overrides all
     ...componentStyles,
+    vars: mergedVars,
     // Computed opacity for rendering
     _computedOpacity: computedOpacity,
     // Keep original component opacity for reference

@@ -104,6 +104,9 @@ export function BulletListComponent(props: BulletListProps) {
 } = props;
 
   const dbg = !!(debugLayout || showLayout);
+  const fontSubhead = 'var(--font-subhead, ui-sans-serif, system-ui, sans-serif)';
+  const colorText = 'var(--color-text, #ffffff)';
+  const colorTextMuted = 'var(--color-text-muted, rgba(255,255,255,0.8))';
   const isAbsolute = layoutMode === 'absolute';
   const maxWidthValue = (() => {
     if (isAbsolute) {
@@ -270,7 +273,8 @@ export function BulletListComponent(props: BulletListProps) {
             }
           }
 
-          const finalTextColor = item.highlight ? highlightColor : textColor;
+          const baseTextColor = item.highlight ? highlightColor : textColor;
+          const finalTextColor = baseTextColor === textColor ? colorText : baseTextColor;
           const finalBulletColor = bulletColor || finalTextColor;
 
           // Render bullet node (supports lucide or unicode or text)
@@ -364,6 +368,7 @@ export function BulletListComponent(props: BulletListProps) {
                     fontSize: `${fontSize}px`,
                     lineHeight,
                     fontWeight: item.highlight ? 600 : 400,
+                    fontFamily: fontSubhead,
                   }}
                 >
                   {item.text}
@@ -374,10 +379,11 @@ export function BulletListComponent(props: BulletListProps) {
                       <li
                         key={subIndex}
                         style={{
-                          color: textColor,
+                          color: colorTextMuted,
                           fontSize: `${fontSize * 0.85}px`,
                           lineHeight,
                           marginBottom: `${spacing / 2}px`,
+                          fontFamily: fontSubhead,
                         }}
                       >
                         <span style={{ marginRight: '8px' }}>◦</span>

@@ -74,6 +74,8 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
   // Default colors from styles or fallback
   const finalTitleColor = titleColor || styles?.color || '#ffffff';
   const finalSubtitleColor = subtitleColor || styles?.color || '#cccccc';
+  const fontHeadline = 'var(--font-headline, ui-sans-serif, system-ui, sans-serif)';
+  const fontSubhead = 'var(--font-subhead, ui-sans-serif, system-ui, sans-serif)';
 
   // Default entrance animations
   const defaultTitleEntrance: TransitionConfig = {
@@ -149,6 +151,7 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
             fontSize: `${titleSize}px`,
             fontWeight: titleWeight,
             color: finalTitleColor,
+            fontFamily: fontHeadline,
             margin: 0,
             opacity: titleTransition.opacity,
             transform: titleTransition.transform || 'none',
@@ -162,6 +165,7 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
               fontSize: `${subtitleSize}px`,
               fontWeight: subtitleWeight,
               color: finalSubtitleColor,
+              fontFamily: fontSubhead,
               marginTop: `${gap}px`,
               marginBottom: 0,
               opacity: subtitleTransition.opacity,

@@ -3,6 +3,7 @@ import { SubtitleComponent } from "./SubtitleComponent.tsx";
 import { ProgressBarComponent } from "./ProgressBarComponent.tsx";
 import { RectangleComponent } from "./RectangleComponent.tsx";
 import { BackgroundComponent } from "./BackgroundComponent.tsx";
+import { ColorThemeDemo } from "./demo/ColorThemeDemo.js";
 
 // Layout components
 import { TitleSlideLayout } from "./layouts/TitleSlideLayout.js";
@@ -34,6 +35,7 @@ registry.set("Subtitle", SubtitleComponent);
 registry.set("ProgressBar", ProgressBarComponent);
 registry.set("Rectangle", RectangleComponent);
 registry.set("Background", BackgroundComponent);
+registry.set("ColorThemeDemo", ColorThemeDemo);
 
 // Register layout components
 registry.set("TitleSlide", TitleSlideLayout);

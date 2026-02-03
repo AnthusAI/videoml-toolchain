@@ -174,6 +174,9 @@ export type VisualStyles = {
   fontWeight?: number | string;
   textAlign?: "left" | "center" | "right";
 
+  // CSS variable theme tokens (fonts/colors)
+  vars?: Record<string, string>;
+
   // Future: transforms, filters, etc.
 };
 
