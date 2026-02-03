@@ -246,15 +246,20 @@ export function FlexPageLayout({
           const flex =
             child.flex == null ? "1 1 0" : typeof child.flex === "number" ? `${child.flex} ${child.flex} 0` : child.flex;
 
+          const typeLabelMap: Record<string, string> = {
+            BulletList: "Bullet List",
+            BulletListScreen: "Bullet List Screen",
+            FlexPage: "Flex Page",
+          };
           const baseLabel = child.id
             ? titleCase(child.id)
             : child.type
-              ? titleCase(child.type)
+              ? (typeLabelMap[child.type] ?? titleCase(child.type))
               : `Child ${idx + 1}`;
 
           // Prefer readable, non-redundant labels.
           const childLabelText =
-            child.type === "BulletList" ? `${titleCase(child.type)} Component` : baseLabel;
+            child.type === "BulletList" ? "Bullet List Component" : baseLabel;
           const showChildLabel = debugLayout;
 
           const childProps: Record<string, any> = {
