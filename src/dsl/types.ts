@@ -216,3 +216,43 @@ export type VideoFileSpec = {
 export type CompositionDefaults = Partial<Pick<CompositionSpec, "voiceover" | "audioProviders" | "meta">> & {
   audioPlan?: Partial<AudioPlan>;
 };
+
+// Animation types
+export type TransitionDirection = 'left' | 'right' | 'up' | 'down';
+
+export type TransitionConfig = {
+  type: 'fade' | 'slide' | 'push' | 'scale' | 'wipe' | 'typewriter' | 'spring';
+  durationFrames: number;
+  easing?: string; // Name of easing function
+  delayFrames?: number;
+  direction?: TransitionDirection;
+  from?: number;
+  to?: number;
+  distance?: number;
+  // ... other type-specific options as needed
+};
+
+export type StaggerConfig = {
+  count: number;
+  delayFrames: number;
+  pattern?: 'linear' | 'reverse' | 'from-center' | 'from-edges' | 'random';
+  seed?: number;
+};
+
+// Layout and component types
+export type LayoutType =
+  | 'TitleSlide'
+  | 'TwoColumn'
+  | 'Grid'
+  | 'Sidebar'
+  | 'SplitScreen'
+  | 'ChapterHeading'
+  | 'QuoteCard';
+
+export type MotionComponentType =
+  | 'Chyron'
+  | 'LowerThird'
+  | 'BulletList'
+  | 'Callout'
+  | 'CodeBlock'
+  | 'Icon';

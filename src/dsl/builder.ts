@@ -408,6 +408,18 @@ class LayerBuilder {
   }
 
   /**
+   * Add a background component to this layer.
+   */
+  background(props: Record<string, unknown>): this {
+    this.spec.components.push({
+      id: `background-${this.spec.components.length}`,
+      type: "Background",
+      props,
+    });
+    return this;
+  }
+
+  /**
    * Add a title component to this layer.
    */
   title(props: Record<string, unknown>): this {
@@ -469,6 +481,71 @@ class LayerBuilder {
       timing: options?.timing,
     });
     return this;
+  }
+
+  /**
+   * Add a layout component to this layer.
+   */
+  layout(
+    type: string,
+    props: Record<string, unknown>,
+    options?: { timing?: { startSec?: number; endSec?: number }; zIndex?: number }
+  ): this {
+    return this.component(
+      `layout-${type.toLowerCase()}-${this.spec.components.length}`,
+      type,
+      props,
+      options
+    );
+  }
+
+  /**
+   * Add a chyron (ticker/crawl) to this layer.
+   */
+  chyron(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`chyron-${this.spec.components.length}`, 'Chyron', props, options);
+  }
+
+  /**
+   * Add a lower third name plate.
+   */
+  lowerThird(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`lower-third-${this.spec.components.length}`, 'LowerThird', props, options);
+  }
+
+  /**
+   * Add an animated bullet list.
+   */
+  bulletList(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`bullet-list-${this.spec.components.length}`, 'BulletList', props, options);
+  }
+
+  /**
+   * Add a callout annotation.
+   */
+  callout(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`callout-${this.spec.components.length}`, 'Callout', props, options);
+  }
+
+  /**
+   * Add a syntax-highlighted code block.
+   */
+  codeBlock(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`code-block-${this.spec.components.length}`, 'CodeBlock', props, options);
+  }
+
+  /**
+   * Add a quote card layout.
+   */
+  quoteCard(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`quote-card-${this.spec.components.length}`, 'QuoteCard', props, options);
+  }
+
+  /**
+   * Place a standalone icon (Lucide or Unicode).
+   */
+  icon(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`icon-${this.spec.components.length}`, 'Icon', props, options);
   }
 }
 
