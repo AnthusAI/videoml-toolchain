@@ -20,25 +20,30 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
   const shouldMock =
     ["1", "true"].includes(String(process.env.CI ?? "").toLowerCase()) ||
     ["1", "true"].includes(String(process.env.BABULUS_MOCK_TTS ?? "").toLowerCase());
-  if (shouldMock && name !== "dry-run") {
-    return dryRunProvider();
-  }
   const shouldFail =
     ["1", "true"].includes(String(process.env.BABULUS_FORCE_TTS_ERROR ?? "").toLowerCase());
-  if (shouldFail && name !== "dry-run") {
-    return {
-      name: "failing-tts",
-      async synthesize() {
-        throw new Error("TTS API unavailable");
-      },
-    };
-  }
+  const failingProvider = () => ({
+    name: "failing-tts",
+    async synthesize() {
+      throw new Error("TTS API unavailable");
+    },
+  });
   if (name === "dry-run") {
     return dryRunProvider();
   }
   if (name === "openai") {
     const cfg = getProviderConfig(config, "openai");
-    const apiKey = process.env.OPENAI_API_KEY || String(cfg.api_key ?? "");
+    if (shouldFail) {
+      return failingProvider();
+    }
+    if (shouldMock) {
+      return dryRunProvider();
+    }
+    // Accept key from env, providers.openai.api_key, or legacy root key `openai_api_key`
+    const apiKey =
+      process.env.OPENAI_API_KEY ||
+      String(cfg.api_key ?? "") ||
+      (typeof (config as any)?.openai_api_key === "string" ? String((config as any).openai_api_key) : "");
     if (!apiKey || apiKey.startsWith("test-")) {
       return dryRunProvider();
     }
@@ -66,6 +71,12 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
         }
       }
     }
+    if (shouldFail) {
+      return failingProvider();
+    }
+    if (shouldMock) {
+      return dryRunProvider();
+    }
     const apiKey = process.env.ELEVENLABS_API_KEY || String(cfg.api_key ?? "");
     const voiceId = String(cfg.voice_id ?? "");
     if (!apiKey || apiKey.startsWith("test-") || !voiceId) {
@@ -83,6 +94,12 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
   }
   if (name === "aws" || name === "aws-polly") {
     const cfg = getProviderConfig(config, "aws_polly");
+    if (shouldFail) {
+      return failingProvider();
+    }
+    if (shouldMock) {
+      return dryRunProvider();
+    }
     const hasAwsCreds =
       Boolean(process.env.AWS_ACCESS_KEY_ID) ||
       Boolean(process.env.AWS_PROFILE) ||
@@ -99,6 +116,12 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
   }
   if (name === "azure" || name === "azure-speech") {
     const cfg = getProviderConfig(config, "azure_speech");
+    if (shouldFail) {
+      return failingProvider();
+    }
+    if (shouldMock) {
+      return dryRunProvider();
+    }
     const apiKey = process.env.AZURE_SPEECH_KEY || String(cfg.api_key ?? "");
     const region = process.env.AZURE_SPEECH_REGION || String(cfg.region ?? "");
     if (!apiKey || apiKey.startsWith("test-") || !region) {

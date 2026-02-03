@@ -38,10 +38,15 @@ export class OpenAITTSProvider implements TTSProvider {
     const model = req.model ?? this.defaultModel;
     const voice = req.voice ?? this.defaultVoice;
 
+    // Lightweight pronunciation shim: ensure "Babulus" sounds like "bab-ulous" (rhymes with "fabulous" but starts with B)
+    const normalizedText = req.text.replace(/\bBabulus\b/gi, (m) =>
+      m[0] === "B" ? "Bab-ulous" : "bab-ulous"
+    );
+
     const payload = {
       model,
       voice,
-      input: req.text,
+      input: normalizedText,
       response_format: "wav",
     };
 

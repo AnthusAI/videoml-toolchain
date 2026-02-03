@@ -14,6 +14,7 @@ export type RenderVideoScriptOptions = Omit<RenderVideoOptions, "component" | "c
   timeline?: TimelineData | null;
   title?: string | null;
   subtitle?: string | null;
+  debugLayout?: boolean;
   fps?: number;
   width?: number;
   height?: number;
@@ -26,6 +27,7 @@ export const renderVideoFromScript = async ({
   timeline,
   title,
   subtitle,
+  debugLayout,
   fps,
   width,
   height,
@@ -38,8 +40,9 @@ export const renderVideoFromScript = async ({
   // Handle preview mode
   let resolvedFps: number;
   let resolvedDurationFrames: number;
-  let startFrame: number | undefined;
-  let endFrame: number | undefined;
+  // Default to explicit start/end if provided; preview mode can override below
+  let startFrame: number | undefined = options.startFrame;
+  let endFrame: number | undefined = options.endFrame;
 
   if (preview) {
     // Preview mode: use preview fps and calculate frame range
@@ -78,6 +81,7 @@ export const renderVideoFromScript = async ({
       script,
       title: title ?? undefined,
       subtitle: subtitle ?? undefined,
+      debugLayout: !!debugLayout,
     },
     startFrame,
     endFrame,
