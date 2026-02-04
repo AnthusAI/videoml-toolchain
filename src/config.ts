@@ -7,26 +7,32 @@ import { ParseError } from "./errors.js";
 export type Config = Record<string, unknown>;
 
 export function loadConfig(projectDir?: string, dslPath?: string): Config {
-  const path = findConfigPath(projectDir, dslPath);
+  const override = process.env.BABULUS_PATH;
+  if (override) {
+    const resolved = resolve(override);
+    const candidate =
+      existsSync(resolved) && !resolved.endsWith(".yml") && !resolved.endsWith(".yaml")
+        ? join(resolved, "config.yml")
+        : resolved;
+    if (existsSync(candidate)) {
+      try {
+        return parseConfig(candidate);
+      } catch (err) {
+        // If project context is provided, fall back to other lookup locations instead of failing hard.
+        if (!projectDir && !dslPath) {
+          throw err;
+        }
+      }
+    } else if (!projectDir && !dslPath) {
+      throw new ParseError(`BABULUS_PATH is set but config not found: ${candidate}`);
+    }
+  }
+
+  const path = findConfigPathWithoutOverride(projectDir, dslPath);
   if (!path) {
     return {};
   }
-  try {
-    const text = readFileSync(path, "utf-8");
-    const obj = YAML.parse(text);
-    if (!obj) {
-      return {};
-    }
-    if (typeof obj !== "object" || Array.isArray(obj)) {
-      throw new ParseError(`Config must be a mapping: ${path}`);
-    }
-    return obj as Config;
-  } catch (err) {
-    if (err instanceof ParseError) {
-      throw err;
-    }
-    throw new ParseError(`Invalid config: ${path}`);
-  }
+  return parseConfig(path);
 }
 
 export function findConfigPath(projectDir?: string, dslPath?: string): string | null {
@@ -47,6 +53,10 @@ export function findConfigPath(projectDir?: string, dslPath?: string): string | 
     }
   }
 
+  return findConfigPathWithoutOverride(projectDir, dslPath);
+}
+
+function findConfigPathWithoutOverride(projectDir?: string, dslPath?: string): string | null {
   if (dslPath) {
     const root = findProjectRoot(dslPath);
     const local = join(root, ".babulus", "config.yml");
@@ -73,6 +83,25 @@ export function findConfigPath(projectDir?: string, dslPath?: string): string | 
   }
 
   return null;
+}
+
+function parseConfig(path: string): Config {
+  try {
+    const text = readFileSync(path, "utf-8");
+    const obj = YAML.parse(text);
+    if (!obj) {
+      return {};
+    }
+    if (typeof obj !== "object" || Array.isArray(obj)) {
+      throw new ParseError(`Config must be a mapping: ${path}`);
+    }
+    return obj as Config;
+  } catch (err) {
+    if (err instanceof ParseError) {
+      throw err;
+    }
+    throw new ParseError(`Invalid config: ${path}`);
+  }
 }
 
 export function findProjectRoot(dslPath: string): string {
