@@ -7,8 +7,10 @@ export type ColorThemeDemoProps = {
     surfaceStrong: string;
     text: string;
     textMuted: string;
-    accent: string;
-    accentStrong: string;
+    primary: string;
+    secondary: string;
+    muted: string;
+    mutedMore: string;
   };
   labelStyle?: React.CSSProperties;
 };
@@ -18,15 +20,17 @@ export function ColorThemeDemo({ palette, labelStyle }: ColorThemeDemoProps) {
     { label: "BG", color: palette.bg },
     { label: "Surface", color: palette.surface },
     { label: "Surface+", color: palette.surfaceStrong },
-    { label: "Accent", color: palette.accent },
-    { label: "Accent+", color: palette.accentStrong },
+    { label: "Primary", color: palette.primary },
+    { label: "Secondary", color: palette.secondary },
+    { label: "Muted", color: palette.muted },
+    { label: "More Muted", color: palette.mutedMore },
   ];
 
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
         gap: 18,
         width: "100%",
         height: "100%",
