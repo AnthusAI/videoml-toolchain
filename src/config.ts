@@ -39,7 +39,12 @@ export function findConfigPath(projectDir?: string, dslPath?: string): string | 
     if (existsSync(candidate)) {
       return candidate;
     }
-    throw new ParseError(`BABULUS_PATH is set but config not found: ${candidate}`);
+    // If a projectDir/dslPath is provided, fall back to that rather than hard-failing.
+    // This keeps strict behavior for config-only lookups but avoids breaking CLI runs
+    // when a global BABULUS_PATH is stale.
+    if (!projectDir && !dslPath) {
+      throw new ParseError(`BABULUS_PATH is set but config not found: ${candidate}`);
+    }
   }
 
   if (dslPath) {
