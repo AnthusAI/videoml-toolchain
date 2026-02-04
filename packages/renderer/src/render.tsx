@@ -157,9 +157,12 @@ export const renderFrameToHtml = ({ component: Component, config, frame, inputPr
   const maxFrame = Math.max(0, config.durationFrames - 1);
   const clampedFrame = clamp(Math.round(frame), 0, maxFrame);
 
-  // For components that use hooks, we can't use SSR - we need client-side rendering
-  // So we create an empty container and will hydrate it in the browser
-  const markup = ""; // Empty - will be rendered client-side
+  // Server-render for deterministic HTML snapshots (used by tests and CLI tooling)
+  const markup = renderToString(
+    <RendererProvider frame={clampedFrame} config={config}>
+      {React.createElement(Component, inputProps ?? {})}
+    </RendererProvider>,
+  );
 
   // Serialize the render data for client-side hydration
   const renderData = {
