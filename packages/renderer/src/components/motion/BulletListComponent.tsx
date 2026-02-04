@@ -73,7 +73,7 @@ export type BulletListProps = {
 
 export function BulletListComponent(props: BulletListProps) {
   const {
-    items,
+    items = [],
   bulletStyle = 'disc',
   customBullet,
   bulletColor,

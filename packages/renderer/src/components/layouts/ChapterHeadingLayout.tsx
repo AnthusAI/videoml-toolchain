@@ -90,6 +90,7 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
           justifyContent: 'center',
           alignItems: 'center',
           padding: '80px',
+          background: 'var(--color-bg, #101010)',
         }}
       >
         <div
@@ -112,8 +113,20 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
             transform: titleTransition.transform || 'none',
           }}
         >
-          <div style={{ fontSize: `${titleSize}px`, fontWeight: 700, color: '#ffffff' }}>{title}</div>
-          {subtitle && <div style={{ fontSize: `${subtitleSize}px`, color: '#cccccc', marginTop: '16px' }}>{subtitle}</div>}
+          <div style={{ fontSize: `${titleSize}px`, fontWeight: 700, color: 'var(--color-text, #ffffff)' }}>
+            {title}
+          </div>
+          {subtitle && (
+            <div
+              style={{
+                fontSize: `${subtitleSize}px`,
+                color: 'var(--color-text-muted, #cccccc)',
+                marginTop: '16px',
+              }}
+            >
+              {subtitle}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -130,6 +143,7 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
           gap: '48px',
           padding: '80px',
           alignItems: 'center',
+          background: 'var(--color-bg, #101010)',
         }}
       >
         <div
@@ -145,8 +159,20 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
           {number}
         </div>
         <div style={{ opacity: titleTransition.opacity, transform: titleTransition.transform || 'none' }}>
-          <div style={{ fontSize: `${titleSize}px`, fontWeight: 700, color: '#ffffff' }}>{title}</div>
-          {subtitle && <div style={{ fontSize: `${subtitleSize}px`, color: '#cccccc', marginTop: '16px' }}>{subtitle}</div>}
+          <div style={{ fontSize: `${titleSize}px`, fontWeight: 700, color: 'var(--color-text, #ffffff)' }}>
+            {title}
+          </div>
+          {subtitle && (
+            <div
+              style={{
+                fontSize: `${subtitleSize}px`,
+                color: 'var(--color-text-muted, #cccccc)',
+                marginTop: '16px',
+              }}
+            >
+              {subtitle}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -162,6 +188,7 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '80px',
+        background: 'var(--color-bg, #101010)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '24px' }}>
@@ -180,7 +207,7 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
           style={{
             fontSize: `${titleSize}px`,
             fontWeight: 700,
-            color: '#ffffff',
+            color: 'var(--color-text, #ffffff)',
             opacity: titleTransition.opacity,
             transform: titleTransition.transform || 'none',
           }}

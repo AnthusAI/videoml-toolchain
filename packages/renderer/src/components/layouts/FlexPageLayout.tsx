@@ -175,7 +175,7 @@ export function FlexPageLayout({
         flexDirection: "column",
         padding,
         gap,
-        background: background ?? styles?.background ?? "transparent",
+        background: background ?? styles?.background ?? "var(--color-bg, #101010)",
         boxSizing: "border-box",
         outline: dbgOutline,
         outlineOffset: -6,

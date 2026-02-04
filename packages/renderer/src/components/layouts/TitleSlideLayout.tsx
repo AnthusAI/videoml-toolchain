@@ -6,14 +6,19 @@ export type TitleSlideLayoutProps = {
   // Content
   title: string;
   subtitle?: string;
+  eyebrow?: string;
 
   // Typography
   titleSize?: number;
   subtitleSize?: number;
+  eyebrowSize?: number;
   titleWeight?: number;
   subtitleWeight?: number;
+  eyebrowWeight?: number;
   titleColor?: string;
   subtitleColor?: string;
+  eyebrowColor?: string;
+  eyebrowLetterSpacing?: number;
 
   // Layout
   verticalAlign?: 'top' | 'center' | 'bottom';
@@ -55,12 +60,17 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
   const {
     title,
     subtitle,
+    eyebrow,
     titleSize = 96,
     subtitleSize = 36,
+    eyebrowSize = 22,
     titleWeight = 700,
     subtitleWeight = 400,
+    eyebrowWeight = 600,
     titleColor,
     subtitleColor,
+    eyebrowColor,
+    eyebrowLetterSpacing = 0.28,
     verticalAlign = 'center',
     horizontalAlign = 'center',
     gap = 24,
@@ -81,10 +91,12 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
   } = props;
 
   // Default colors from styles or fallback
-  const finalTitleColor = titleColor || styles?.color || '#ffffff';
-  const finalSubtitleColor = subtitleColor || styles?.color || '#cccccc';
+  const finalTitleColor = titleColor || 'var(--color-text, #ffffff)';
+  const finalSubtitleColor = subtitleColor || 'var(--color-text-muted, #cccccc)';
+  const finalEyebrowColor = eyebrowColor || 'var(--color-text-muted, rgba(255,255,255,0.75))';
   const fontHeadline = 'var(--font-headline, ui-sans-serif, system-ui, sans-serif)';
   const fontSubhead = 'var(--font-subhead, ui-sans-serif, system-ui, sans-serif)';
+  const fontEyebrow = 'var(--font-eyebrow, ui-sans-serif, system-ui, sans-serif)';
 
   // Default entrance animations
   const defaultTitleEntrance: TransitionConfig = {
@@ -155,7 +167,7 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
         justifyContent,
         alignItems,
         padding: `${padding}px`,
-        background: background || 'transparent',
+        background: background || 'var(--color-bg, #101010)',
         outline: debugOutline,
         outlineOffset: -6,
       }}
@@ -184,6 +196,21 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
               {reviveNode(logo)}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {eyebrow && (
+                <div
+                  style={{
+                    fontSize: `${eyebrowSize}px`,
+                    fontWeight: eyebrowWeight,
+                    color: finalEyebrowColor,
+                    fontFamily: fontEyebrow,
+                    textTransform: 'uppercase',
+                    letterSpacing: `${eyebrowLetterSpacing}em`,
+                    marginBottom: `${Math.max(8, gap * 0.4)}px`,
+                  }}
+                >
+                  {eyebrow}
+                </div>
+              )}
               <h1
                 style={{
                   fontSize: `${titleSize}px`,
@@ -217,6 +244,21 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
           </div>
         ) : (
           <>
+            {eyebrow && (
+              <div
+                style={{
+                  fontSize: `${eyebrowSize}px`,
+                  fontWeight: eyebrowWeight,
+                  color: finalEyebrowColor,
+                  fontFamily: fontEyebrow,
+                  textTransform: 'uppercase',
+                  letterSpacing: `${eyebrowLetterSpacing}em`,
+                  marginBottom: `${Math.max(8, gap * 0.4)}px`,
+                }}
+              >
+                {eyebrow}
+              </div>
+            )}
             <h1
               style={{
                 fontSize: `${titleSize}px`,
