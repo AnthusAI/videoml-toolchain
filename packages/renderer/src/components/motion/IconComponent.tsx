@@ -9,6 +9,7 @@ export type IconProps = {
   color?: string;
   fontFamily?: string; // unicode only
   position?: { x?: number; y?: number };
+  inline?: boolean;
 };
 
 const DEFAULT_UNICODE_FONT =
@@ -22,9 +23,13 @@ export function IconComponent({
   color = "#ffffff",
   fontFamily,
   position,
+  inline = false,
 }: IconProps) {
   const x = position?.x ?? 0;
   const y = position?.y ?? 0;
+  const style: React.CSSProperties = inline
+    ? { display: "inline-flex", alignItems: "center", justifyContent: "center" }
+    : { position: "absolute", left: x, top: y };
 
   if (kind === "lucide") {
     const path = lucidePath(name);
@@ -38,7 +43,7 @@ export function IconComponent({
         strokeWidth={strokeWidth}
         strokeLinecap="round"
         strokeLinejoin="round"
-        style={{ position: "absolute", left: x, top: y }}
+        style={style}
       >
         {path || <circle cx="12" cy="12" r="10" />}
       </svg>
@@ -49,9 +54,7 @@ export function IconComponent({
   return (
     <div
       style={{
-        position: "absolute",
-        left: x,
-        top: y,
+        ...(inline ? {} : { position: "absolute", left: x, top: y }),
         color,
         fontSize: size,
         fontFamily: fontFamily || DEFAULT_UNICODE_FONT,

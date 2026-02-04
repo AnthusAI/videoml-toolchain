@@ -1,16 +1,14 @@
 import React from "react";
-import { BulletListComponent, type BulletListProps } from "../motion/BulletListComponent.js";
-import { FlexPageLayout } from "./FlexPageLayout.js";
+import { FlexPageLayout, type FlexPageChildSpec } from "./FlexPageLayout.js";
 
-export type BulletListScreenLayoutProps = {
+export type GridScreenLayoutProps = {
   background?: string;
   padding?: number;
   gap?: number;
 
-  // Header
   label?: string;
   eyebrow?: string;
-  title: string;
+  title?: string;
   subtitle?: string;
   chapterNumber?: string | number;
   chapterLabel?: string;
@@ -21,10 +19,19 @@ export type BulletListScreenLayoutProps = {
   logoFit?: "contain" | "cover";
   logo?: React.ReactNode;
   logoPosition?: "left" | "right" | "center";
-  align?: "left" | "center";
+  headerAlign?: "left" | "center";
 
-  // Bullets
-  bullets: BulletListProps;
+  grid: {
+    columns: number;
+    rows?: number;
+    items: React.ReactNode[];
+    gap?: number;
+    padding?: number;
+    staggerPattern?: "row" | "column" | "diagonal" | "spiral" | "random";
+    staggerDelayFrames?: number;
+    itemDurationFrames?: number;
+    entranceStartFrame?: number;
+  };
 
   // Injected
   frame?: number;
@@ -40,51 +47,45 @@ export type BulletListScreenLayoutProps = {
   debugLayout?: boolean;
 };
 
-/**
- * Standard bullet-screen layout: full-page flex with header + bullet list.
- */
-export function BulletListScreenLayout(props: BulletListScreenLayoutProps) {
-  const {
-    background,
-    padding,
-    gap,
-    label,
-    eyebrow,
-    title,
-    subtitle,
-    chapterNumber,
-    chapterLabel,
-    logoUrl,
-    logoAlt,
-    logoWidth,
-    logoHeight,
-    logoFit,
-    logo,
-    logoPosition,
-    align = "left",
-    bullets,
-    frame,
-    fps,
-    timeSec,
-    videoWidth,
-    videoHeight,
-    scene,
-    cue,
-    styles,
-    markup,
-    progress,
-    debugLayout = false,
-  } = props;
-
-  const bulletProps: BulletListProps = {
-    layoutMode: "flex",
-    justify: "space-between",
-    ...bullets,
-    frame,
-    fps,
-    videoWidth,
-    videoHeight,
-    debugLayout,
+export function GridScreenLayout({
+  background,
+  padding,
+  gap,
+  label,
+  eyebrow,
+  title,
+  subtitle,
+  chapterNumber,
+  chapterLabel,
+  logoUrl,
+  logoAlt,
+  logoWidth,
+  logoHeight,
+  logoFit,
+  logo,
+  logoPosition,
+  headerAlign = "left",
+  grid,
+  frame,
+  fps,
+  timeSec,
+  videoWidth,
+  videoHeight,
+  scene,
+  cue,
+  styles,
+  markup,
+  progress,
+  debugLayout = false,
+}: GridScreenLayoutProps) {
+  const child: FlexPageChildSpec = {
+    type: "Grid",
+    id: "grid",
+    flex: 1,
+    props: {
+      ...grid,
+      padding: grid.padding ?? 0,
+    },
   };
 
   return (
@@ -98,7 +99,6 @@ export function BulletListScreenLayout(props: BulletListScreenLayoutProps) {
       subtitle={subtitle}
       chapterNumber={chapterNumber}
       chapterLabel={chapterLabel}
-      headerAlign={align}
       logoUrl={logoUrl}
       logoAlt={logoAlt}
       logoWidth={logoWidth}
@@ -106,8 +106,10 @@ export function BulletListScreenLayout(props: BulletListScreenLayoutProps) {
       logoFit={logoFit}
       logo={logo}
       logoPosition={logoPosition}
+      headerAlign={headerAlign}
       contentDirection="column"
       contentGap={24}
+      children={[child]}
       debugLayout={debugLayout}
       frame={frame}
       fps={fps}
@@ -119,14 +121,6 @@ export function BulletListScreenLayout(props: BulletListScreenLayoutProps) {
       styles={styles}
       markup={markup}
       progress={progress}
-      children={[
-        {
-          type: "BulletList",
-          id: "bulletList",
-          flex: 1,
-          props: bulletProps,
-        },
-      ]}
     />
   );
 }

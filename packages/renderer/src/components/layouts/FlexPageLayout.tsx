@@ -1,5 +1,6 @@
 import React from "react";
 import { getComponent } from "../registry.js";
+import { reviveNode } from "../rehydrate.js";
 
 export type FlexPageChildSpec = {
   type: string;
@@ -19,11 +20,15 @@ export type FlexPageLayoutProps = {
   eyebrow?: string;
   title?: string;
   subtitle?: string;
+  chapterNumber?: string | number;
+  chapterLabel?: string;
   logoUrl?: string;
   logoAlt?: string;
   logoWidth?: number;
   logoHeight?: number;
   logoFit?: "contain" | "cover";
+  logo?: React.ReactNode;
+  logoPosition?: "left" | "right" | "center";
   headerAlign?: "left" | "center";
 
   // Content container
@@ -54,11 +59,15 @@ export function FlexPageLayout({
   eyebrow,
   title,
   subtitle,
+  chapterNumber,
+  chapterLabel = "Chapter",
   logoUrl,
   logoAlt,
   logoWidth,
   logoHeight,
   logoFit,
+  logo,
+  logoPosition,
   headerAlign = "left",
   contentDirection = "column",
   contentGap = 24,
@@ -76,9 +85,9 @@ export function FlexPageLayout({
   debugLayout = false,
 }: FlexPageLayoutProps) {
   // Debug borders should be clearly visible even when scaled down in video players.
-  const dbgBorder = debugLayout ? "2px dashed rgba(255, 0, 0, 0.6)" : undefined;
-  const dbgBorder2 = debugLayout ? "2px dashed rgba(0, 160, 255, 0.6)" : undefined;
-  const dbgBorder3 = debugLayout ? "2px dashed rgba(0, 255, 160, 0.6)" : undefined;
+  const dbgOutline = debugLayout ? "6px dashed rgba(0, 255, 255, 0.95)" : undefined;
+  const dbgOutline2 = debugLayout ? "5px dashed rgba(0, 255, 255, 0.85)" : undefined;
+  const dbgOutline3 = debugLayout ? "4px dashed rgba(0, 255, 255, 0.7)" : undefined;
   const titleCase = (s: string) =>
     s
       .replace(/([a-z])([A-Z])/g, "$1 $2") // split camelCase
@@ -113,6 +122,50 @@ export function FlexPageLayout({
   const colorText = "var(--color-text, #ffffff)";
   const colorTextMuted = "var(--color-text-muted, rgba(255,255,255,0.7))";
 
+  const resolvedLogo = logo ?? (logoUrl ? (
+    <img
+      src={logoUrl}
+      alt={logoAlt ?? "Logo"}
+      style={{
+        width: logoWidth ?? 140,
+        height: logoHeight ?? 80,
+        objectFit: logoFit ?? "contain",
+        display: "block",
+      }}
+    />
+  ) : null);
+
+  const logoNode = resolvedLogo ? reviveNode(resolvedLogo) : null;
+  const resolvedLogoPosition: "left" | "right" | "center" =
+    logoPosition ?? (headerAlign === "center" ? "center" : "right");
+  const showLogoInline = !!logoNode && resolvedLogoPosition === "left";
+  const showLogoRight = !!logoNode && resolvedLogoPosition === "right";
+  const showLogoCenter = !!logoNode && resolvedLogoPosition === "center";
+
+  const headerHeightEstimate =
+    (label ? 20 + 6 : 0) +
+    (eyebrow ? 18 + 6 : 0) +
+    (title ? 64 : 0) +
+    (subtitle ? 28 + 8 : 0);
+  const logoHeightEstimate = Math.max(64, Math.min(180, headerHeightEstimate || 120));
+
+  const sizedLogoNode = (() => {
+    if (!logoNode) return null;
+    if (React.isValidElement(logoNode)) {
+      const nextProps: Record<string, any> = {};
+      if (typeof (logoNode.props as any)?.size === "number") {
+        nextProps.size = logoHeightEstimate;
+      }
+      nextProps.style = {
+        ...(logoNode.props as any)?.style,
+        height: "100%",
+        width: "auto",
+      };
+      return React.cloneElement(logoNode as any, nextProps);
+    }
+    return logoNode;
+  })();
+
   return (
     <div
       style={{
@@ -124,34 +177,35 @@ export function FlexPageLayout({
         gap,
         background: background ?? styles?.background ?? "transparent",
         boxSizing: "border-box",
-        border: dbgBorder,
-        overflow: "hidden",
+        outline: dbgOutline,
+        outlineOffset: -6,
+        overflow: debugLayout ? "visible" : "hidden",
       }}
     >
       {debugLabel("FlexPage root")}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          justifyContent: headerAlign === "center" ? "center" : "space-between",
-          alignItems: "flex-start",
-          gap: 16,
-          border: dbgBorder2,
-          padding: debugLayout ? 8 : 0,
-          boxSizing: "border-box",
-          position: "relative",
-        }}
-      >
-        {debugLabel("Header")}
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
-            alignItems: headerAlign === "center" ? "center" : "flex-start",
-            gap: 6,
-            minWidth: 0,
+            flexDirection: "row",
+            justifyContent: headerAlign === "center" ? "center" : "space-between",
+            alignItems: "flex-start",
+          gap: 16,
+          outline: dbgOutline2,
+          outlineOffset: -5,
+          boxSizing: "border-box",
+          position: "relative",
           }}
         >
+          {debugLabel("Header")}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: headerAlign === "center" ? "center" : "flex-start",
+              gap: 6,
+              minWidth: 0,
+            }}
+          >
           {label && (
             <div
               style={{
@@ -180,56 +234,135 @@ export function FlexPageLayout({
               {eyebrow}
             </div>
           )}
-          {title && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: chapterNumber || showLogoInline ? "row" : "column",
+              alignItems:
+                chapterNumber || showLogoInline
+                  ? "flex-start"
+                  : headerAlign === "center"
+                    ? "center"
+                    : "flex-start",
+              gap: chapterNumber ? 24 : 0,
+              minWidth: 0,
+            }}
+          >
+            {showLogoInline && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 24,
+                }}
+              >
+                {sizedLogoNode}
+              </div>
+            )}
+            {chapterNumber != null && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 6,
+                  minWidth: 0,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 16,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    color: colorTextMuted,
+                    fontWeight: 600,
+                    fontFamily: fontEyebrow,
+                  }}
+                >
+                  {chapterLabel}
+                </div>
+                <div
+                  style={{
+                    fontSize: 54,
+                    fontWeight: 700,
+                    color: colorText,
+                    lineHeight: 1,
+                    fontFamily: fontHeadline,
+                  }}
+                >
+                  {chapterNumber}
+                </div>
+              </div>
+            )}
             <div
               style={{
-                fontSize: 64,
-                fontWeight: 700,
-                color: colorText,
-                textAlign: headerTextAlign,
-                lineHeight: 1.05,
-                wordBreak: "break-word",
-                fontFamily: fontHeadline,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: headerAlign === "center" && !chapterNumber ? "center" : "flex-start",
+                gap: 8,
+                minWidth: 0,
               }}
             >
-              {title}
+              {title && (
+                <div
+                  style={{
+                    fontSize: 64,
+                    fontWeight: 700,
+                    color: colorText,
+                    textAlign: headerTextAlign,
+                    lineHeight: 1.05,
+                    wordBreak: "break-word",
+                    fontFamily: fontHeadline,
+                  }}
+                >
+                  {title}
+                </div>
+              )}
+              {subtitle && (
+                <div
+                  style={{
+                    fontSize: 28,
+                    fontWeight: 400,
+                    color: colorTextMuted,
+                    textAlign: headerTextAlign,
+                    wordBreak: "break-word",
+                    fontFamily: fontSubhead,
+                  }}
+                >
+                  {subtitle}
+                </div>
+              )}
             </div>
-          )}
-          {subtitle && (
+          </div>
+          {showLogoCenter && (
             <div
               style={{
-                fontSize: 28,
-                fontWeight: 400,
-                color: colorTextMuted,
-                textAlign: headerTextAlign,
-                wordBreak: "break-word",
-                fontFamily: fontSubhead,
+                marginTop: 16,
+                display: "flex",
+                justifyContent: "center",
+                width: "100%",
               }}
             >
-              {subtitle}
+              <div style={{ height: `${logoHeightEstimate}px`, display: "flex", alignItems: "center" }}>
+                {sizedLogoNode}
+              </div>
             </div>
           )}
         </div>
-        {logoUrl && (
+        {showLogoRight && (
           <div
             style={{
               flexShrink: 0,
               display: "flex",
-              alignItems: "flex-start",
+              alignItems: "stretch",
               justifyContent: "flex-end",
               height: "100%",
             }}
           >
-            <img
-              src={logoUrl}
-              alt={logoAlt ?? "Logo"}
-              style={{
-                width: logoWidth ?? 140,
-                height: logoHeight ?? 80,
-                objectFit: logoFit ?? "contain",
-                display: "block",
-              }}
-            />
+            <div style={{ height: `${logoHeightEstimate}px`, display: "flex", alignItems: "center" }}>
+              {sizedLogoNode}
+            </div>
           </div>
         )}
       </div>
@@ -241,7 +374,8 @@ export function FlexPageLayout({
           display: "flex",
           flexDirection: contentDirection,
           gap: contentGap,
-          border: dbgBorder3,
+          outline: dbgOutline3,
+          outlineOffset: debugLayout ? -4 : undefined,
           padding: 0,
           boxSizing: "border-box",
           position: "relative",
@@ -297,7 +431,8 @@ export function FlexPageLayout({
                 display: "flex",
                 flexDirection: "column",
                 ...(child.style ?? {}),
-                border: debugLayout ? "2px dashed rgba(255,255,255,0.35)" : undefined,
+                outline: debugLayout ? dbgOutline3 : undefined,
+                outlineOffset: debugLayout ? -4 : undefined,
                 boxSizing: "border-box",
                 position: "relative",
               }}

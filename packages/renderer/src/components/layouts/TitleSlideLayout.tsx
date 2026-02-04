@@ -1,5 +1,6 @@
 import React from 'react';
 import { applyTransition, type TransitionConfig } from '../../animation/transitions.js';
+import { reviveNode } from '../rehydrate.js';
 
 export type TitleSlideLayoutProps = {
   // Content
@@ -16,6 +17,7 @@ export type TitleSlideLayoutProps = {
 
   // Layout
   verticalAlign?: 'top' | 'center' | 'bottom';
+  horizontalAlign?: 'left' | 'center';
   gap?: number;
   padding?: number;
   maxWidth?: number;
@@ -43,6 +45,10 @@ export type TitleSlideLayoutProps = {
   videoWidth?: number;
   videoHeight?: number;
   styles?: any;
+  debugLayout?: boolean;
+
+  // Logo slot
+  logo?: React.ReactNode;
 };
 
 export function TitleSlideLayout(props: TitleSlideLayoutProps) {
@@ -56,6 +62,7 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
     titleColor,
     subtitleColor,
     verticalAlign = 'center',
+    horizontalAlign = 'center',
     gap = 24,
     padding = 80,
     maxWidth = 1400,
@@ -69,6 +76,8 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
     videoWidth = 1920,
     videoHeight = 1080,
     styles,
+    debugLayout = false,
+    logo,
   } = props;
 
   // Default colors from styles or fallback
@@ -131,6 +140,10 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
   let justifyContent = 'center';
   if (verticalAlign === 'top') justifyContent = 'flex-start';
   if (verticalAlign === 'bottom') justifyContent = 'flex-end';
+  const alignItems = horizontalAlign === 'left' && !logo ? 'flex-start' : 'center';
+  const textAlign = horizontalAlign === 'left' ? 'left' : 'center';
+
+  const debugOutline = debugLayout ? '6px dashed rgba(0, 255, 255, 0.95)' : undefined;
 
   return (
     <div
@@ -140,40 +153,111 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
         display: 'flex',
         flexDirection: 'column',
         justifyContent,
-        alignItems: 'center',
+        alignItems,
         padding: `${padding}px`,
         background: background || 'transparent',
+        outline: debugOutline,
+        outlineOffset: -6,
       }}
     >
-      <div style={{ maxWidth: `${maxWidth}px`, textAlign: 'center' }}>
-        <h1
-          style={{
-            fontSize: `${titleSize}px`,
-            fontWeight: titleWeight,
-            color: finalTitleColor,
-            fontFamily: fontHeadline,
-            margin: 0,
-            opacity: titleTransition.opacity,
-            transform: titleTransition.transform || 'none',
-          }}
-        >
-          {title}
-        </h1>
-        {subtitle && (
-          <p
+      <div
+        style={{
+          maxWidth: `${maxWidth}px`,
+          textAlign,
+          outline: debugOutline,
+          outlineOffset: -6,
+        }}
+      >
+        {horizontalAlign === 'left' && logo ? (
+          <div
             style={{
-              fontSize: `${subtitleSize}px`,
-              fontWeight: subtitleWeight,
-              color: finalSubtitleColor,
-              fontFamily: fontSubhead,
-              marginTop: `${gap}px`,
-              marginBottom: 0,
-              opacity: subtitleTransition.opacity,
-              transform: subtitleTransition.transform || 'none',
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: `${gap * 2}px`,
+              width: 'fit-content',
+              marginLeft: 'auto',
+              marginRight: 'auto',
             }}
           >
-            {subtitle}
-          </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {reviveNode(logo)}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <h1
+                style={{
+                  fontSize: `${titleSize}px`,
+                  fontWeight: titleWeight,
+                  color: finalTitleColor,
+                  fontFamily: fontHeadline,
+                  margin: 0,
+                  opacity: titleTransition.opacity,
+                  transform: titleTransition.transform || 'none',
+                }}
+              >
+                {title}
+              </h1>
+              {subtitle && (
+                <p
+                  style={{
+                    fontSize: `${subtitleSize}px`,
+                    fontWeight: subtitleWeight,
+                    color: finalSubtitleColor,
+                    fontFamily: fontSubhead,
+                    marginTop: `${gap}px`,
+                    marginBottom: 0,
+                    opacity: subtitleTransition.opacity,
+                    transform: subtitleTransition.transform || 'none',
+                  }}
+                >
+                  {subtitle}
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            <h1
+              style={{
+                fontSize: `${titleSize}px`,
+                fontWeight: titleWeight,
+                color: finalTitleColor,
+                fontFamily: fontHeadline,
+                margin: 0,
+                opacity: titleTransition.opacity,
+                transform: titleTransition.transform || 'none',
+              }}
+            >
+              {title}
+            </h1>
+            {subtitle && (
+              <p
+                style={{
+                  fontSize: `${subtitleSize}px`,
+                  fontWeight: subtitleWeight,
+                  color: finalSubtitleColor,
+                  fontFamily: fontSubhead,
+                  marginTop: `${gap}px`,
+                  marginBottom: 0,
+                  opacity: subtitleTransition.opacity,
+                  transform: subtitleTransition.transform || 'none',
+                }}
+              >
+                {subtitle}
+              </p>
+            )}
+            {logo && (
+              <div
+                style={{
+                  marginTop: `${gap}px`,
+                  display: 'flex',
+                  justifyContent: horizontalAlign === 'left' ? 'flex-start' : 'center',
+                }}
+              >
+                {reviveNode(logo)}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

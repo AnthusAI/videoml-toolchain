@@ -4,17 +4,24 @@ import { ProgressBarComponent } from "./ProgressBarComponent.tsx";
 import { RectangleComponent } from "./RectangleComponent.tsx";
 import { BackgroundComponent } from "./BackgroundComponent.tsx";
 import { ColorThemeDemo } from "./demo/ColorThemeDemo.js";
+import { ContentLayoutDemo } from "./demo/ContentLayoutDemo.js";
+import { PlaceholderPanel } from "./demo/PlaceholderPanel.js";
+import { TitleSlideLayoutDemo } from "./demo/TitleSlideLayoutDemo.js";
+import { TwoColumnLayoutDemo } from "./demo/TwoColumnLayoutDemo.js";
 
 // Layout components
 import { TitleSlideLayout } from "./layouts/TitleSlideLayout.js";
 import { TwoColumnLayout } from "./layouts/TwoColumnLayout.js";
 import { GridLayout } from "./layouts/GridLayout.js";
-import { SidebarLayout } from "./layouts/SidebarLayout.js";
 import { SplitScreenLayout } from "./layouts/SplitScreenLayout.js";
 import { ChapterHeadingLayout } from "./layouts/ChapterHeadingLayout.js";
 import { QuoteCardLayout } from "./layouts/QuoteCardLayout.js";
 import { FlexPageLayout } from "./layouts/FlexPageLayout.js";
 import { BulletListScreenLayout } from "./layouts/BulletListScreenLayout.js";
+import { ContentScreenLayout } from "./layouts/ContentScreenLayout.js";
+import { TwoColumnScreenLayout } from "./layouts/TwoColumnScreenLayout.js";
+import { ThreeColumnScreenLayout } from "./layouts/ThreeColumnScreenLayout.js";
+import { GridScreenLayout } from "./layouts/GridScreenLayout.js";
 
 // Motion graphics components
 import { ChyronComponent } from "./motion/ChyronComponent.js";
@@ -36,17 +43,24 @@ registry.set("ProgressBar", ProgressBarComponent);
 registry.set("Rectangle", RectangleComponent);
 registry.set("Background", BackgroundComponent);
 registry.set("ColorThemeDemo", ColorThemeDemo);
+registry.set("ContentLayoutDemo", ContentLayoutDemo);
+registry.set("PlaceholderPanel", PlaceholderPanel);
+registry.set("TitleSlideLayoutDemo", TitleSlideLayoutDemo);
+registry.set("TwoColumnLayoutDemo", TwoColumnLayoutDemo);
 
 // Register layout components
 registry.set("TitleSlide", TitleSlideLayout);
 registry.set("TwoColumn", TwoColumnLayout);
 registry.set("Grid", GridLayout);
-registry.set("Sidebar", SidebarLayout);
 registry.set("SplitScreen", SplitScreenLayout);
 registry.set("ChapterHeading", ChapterHeadingLayout);
 registry.set("QuoteCard", QuoteCardLayout);
 registry.set("FlexPage", FlexPageLayout);
 registry.set("BulletListScreen", BulletListScreenLayout);
+registry.set("ContentScreen", ContentScreenLayout);
+registry.set("TwoColumnScreen", TwoColumnScreenLayout);
+registry.set("ThreeColumnScreen", ThreeColumnScreenLayout);
+registry.set("GridScreen", GridScreenLayout);
 
 // Register motion graphics components
 registry.set("Chyron", ChyronComponent);

@@ -24,9 +24,9 @@ export type QuoteCardLayoutProps = {
 export function QuoteCardLayout({
   quote,
   attribution,
-  accentColor = "#6b46c1",
-  backgroundColor = "rgba(255,255,255,0.9)",
-  textColor = "#1a1a1a",
+  accentColor = "var(--color-accent, #8fb2ff)",
+  backgroundColor = "var(--color-surface, #1f2233)",
+  textColor = "var(--color-text, #f6f2ff)",
   padding = 72,
   maxWidth = 1200,
   entrance,
@@ -37,8 +37,8 @@ export function QuoteCardLayout({
 }: QuoteCardLayoutProps) {
   const entranceConfig: TransitionConfig = entrance ?? {
     type: "fade",
-    durationFrames: 20,
-    from: 0,
+    durationFrames: 1,
+    from: 1,
     to: 1,
   };
 
@@ -63,7 +63,6 @@ export function QuoteCardLayout({
           background: backgroundColor,
           color: textColor,
           borderRadius: 24,
-          boxShadow: "0 24px 60px rgba(0,0,0,0.18)",
           padding: `${padding}px`,
           opacity: transition.opacity ?? 1,
           transform: transition.transform ?? "none",
@@ -90,7 +89,7 @@ export function QuoteCardLayout({
               paddingLeft: 32,
               fontSize: 32,
               fontWeight: 500,
-              color: "rgba(26,26,26,0.65)",
+              color: "var(--color-text-muted, rgba(255,255,255,0.7))",
               textTransform: "uppercase",
               letterSpacing: 2,
             }}

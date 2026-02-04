@@ -250,7 +250,13 @@ export type LayoutType =
   | 'Sidebar'
   | 'SplitScreen'
   | 'ChapterHeading'
-  | 'QuoteCard';
+  | 'QuoteCard'
+  | 'FlexPage'
+  | 'BulletListScreen'
+  | 'ContentScreen'
+  | 'TwoColumnScreen'
+  | 'ThreeColumnScreen'
+  | 'GridScreen';
 
 export type MotionComponentType =
   | 'Chyron'
