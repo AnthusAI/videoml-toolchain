@@ -3,6 +3,7 @@ import { writeFileSync, unlinkSync, existsSync, readFileSync } from "fs";
 import { join, basename, dirname } from "path";
 import { CompileError } from "./errors.js";
 import { ensureDir } from "./util.js";
+import { concatWavFiles } from "./audio/wav.js";
 
 type SpawnFn = typeof spawnSync;
 let spawn = spawnSync;
@@ -296,6 +297,14 @@ export function concatAudioFiles(outPath: string, segmentPaths: string[]): void 
     ], { encoding: "buffer", maxBuffer: 50 * 1024 * 1024 });
     if (res.error) {
       if ((res.error as NodeJS.ErrnoException).code === "ENOENT") {
+        try {
+          if (segmentPaths.every((p) => p.toLowerCase().endsWith(".wav"))) {
+            concatWavFiles(outPath, segmentPaths);
+            return;
+          }
+        } catch (err) {
+          throw new CompileError(`ffmpeg missing and WAV concat failed: ${(err as Error).message}`);
+        }
         throw new CompileError("ffmpeg is required to concatenate audio files");
       }
       throw new CompileError("ffmpeg concat failed");
