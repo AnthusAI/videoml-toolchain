@@ -13,34 +13,51 @@ type PatchOptions = {
   enforceSealed?: boolean;
 };
 
-const isElementNode = (node: any): node is any => Boolean(node && node.nodeType === 1);
+type NodeLike = {
+  nodeType: number;
+  parentNode?: NodeLike | null;
+  childNodes?: ArrayLike<NodeLike>;
+};
 
-const walkElements = (root: Element, visit: (el: Element) => void): void => {
-  const stack: Element[] = [root];
+type ElementLike = NodeLike & {
+  tagName?: string;
+  getAttribute?: (name: string) => string | null;
+  setAttribute?: (name: string, value: string) => void;
+  removeAttribute?: (name: string) => void;
+  appendChild?: (child: NodeLike) => void;
+  insertBefore?: (child: NodeLike, ref: NodeLike | null) => void;
+  replaceChild?: (newChild: NodeLike, oldChild: NodeLike) => void;
+};
+
+const isElementNode = (node: NodeLike | null | undefined): node is ElementLike =>
+  Boolean(node && node.nodeType === 1);
+
+const walkElements = (root: ElementLike, visit: (el: ElementLike) => void): void => {
+  const stack: ElementLike[] = [root];
   while (stack.length) {
     const node = stack.pop();
     if (!node) continue;
     visit(node);
-    const children = Array.from(node.childNodes as any[]).filter(isElementNode) as any[];
+    const children = Array.from(node.childNodes ?? []).filter(isElementNode);
     for (let i = children.length - 1; i >= 0; i -= 1) {
       stack.push(children[i]);
     }
   }
 };
 
-const findById = (root: Element, id: string): Element | null => {
-  let found: Element | null = null;
+const findById = (root: ElementLike, id: string): ElementLike | null => {
+  let found: ElementLike | null = null;
   walkElements(root, (el) => {
     if (found) return;
-    if (el.getAttribute("id") === id) {
+    if (el.getAttribute?.("id") === id) {
       found = el;
     }
   });
   return found;
 };
 
-const findSceneAncestor = (node: Element): Element | null => {
-  let current: Node | null = node;
+const findSceneAncestor = (node: ElementLike): ElementLike | null => {
+  let current: NodeLike | null = node;
   while (current) {
     if (isElementNode(current) && current.tagName === "scene") {
       return current;
@@ -50,33 +67,33 @@ const findSceneAncestor = (node: Element): Element | null => {
   return null;
 };
 
-const assertNotSealed = (root: Element, node: Element, opts?: PatchOptions) => {
+const assertNotSealed = (root: ElementLike, node: ElementLike, opts?: PatchOptions) => {
   if (!opts?.enforceSealed) return;
   const scene = findSceneAncestor(node);
   if (!scene) return;
-  const sealed = scene.getAttribute("sealed") ?? scene.getAttribute("data-sealed");
+  const sealed = scene.getAttribute?.("sealed") ?? scene.getAttribute?.("data-sealed");
   if (sealed === "true") {
-    const sceneId = scene.getAttribute("id") ?? "unknown";
+    const sceneId = scene.getAttribute?.("id") ?? "unknown";
     throw new ParseError(`Cannot patch sealed scene "${sceneId}".`);
   }
 };
 
-const parseFragment = (nodeXml: string): Element => {
+const parseFragment = (nodeXml: string): ElementLike => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<root>${nodeXml}</root>`, "text/xml");
-  const root = doc.documentElement;
-  const firstChild = Array.from(root.childNodes as any[]).find(isElementNode);
+  const root = doc.documentElement as ElementLike;
+  const firstChild = Array.from(root.childNodes ?? []).find(isElementNode);
   if (!firstChild) {
     throw new ParseError("nodeXml must contain a single root element.");
   }
-  return firstChild as Element;
+  return firstChild as ElementLike;
 };
 
 export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOptions): string => {
   const parser = new DOMParser();
   const serializer = new XMLSerializer();
   const doc = parser.parseFromString(xml, "text/xml");
-  const root = doc.documentElement;
+  const root = doc.documentElement as ElementLike;
   if (!root || root.tagName !== "video") {
     throw new ParseError("XML root must be <video>.");
   }
@@ -88,12 +105,12 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
         if (!parent) throw new ParseError(`appendNode: parent "${patch.parentId}" not found.`);
         assertNotSealed(root, parent, opts);
         const newNode = parseFragment(patch.nodeXml);
-        const imported = doc.importNode ? doc.importNode(newNode, true) : (newNode as Node);
-  const children = Array.from(parent.childNodes as any[]).filter(isElementNode);
+        const imported = doc.importNode ? doc.importNode(newNode as any, true) : (newNode as any);
+        const children = Array.from(parent.childNodes ?? []).filter(isElementNode);
         if (patch.index == null || patch.index >= children.length) {
-          parent.appendChild(imported);
+          parent.appendChild?.(imported);
         } else {
-          parent.insertBefore(imported, children[patch.index]);
+          parent.insertBefore?.(imported, children[patch.index] as any);
         }
         break;
       }
@@ -103,7 +120,7 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
           throw new ParseError(`removeNode: node "${patch.nodeId}" not found.`);
         }
         assertNotSealed(root, target, opts);
-        target.parentNode.removeChild(target);
+        (target.parentNode as any).removeChild?.(target as any);
         break;
       }
       case "setAttr": {
@@ -111,9 +128,9 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
         if (!target) throw new ParseError(`setAttr: node "${patch.nodeId}" not found.`);
         assertNotSealed(root, target, opts);
         if (patch.value == null) {
-          target.removeAttribute(patch.name);
+          target.removeAttribute?.(patch.name);
         } else {
-          target.setAttribute(patch.name, patch.value);
+          target.setAttribute?.(patch.name, patch.value);
         }
         break;
       }
@@ -121,7 +138,7 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
         const target = findById(root, patch.nodeId);
         if (!target) throw new ParseError(`setText: node "${patch.nodeId}" not found.`);
         assertNotSealed(root, target, opts);
-        target.textContent = patch.textContent;
+        (target as any).textContent = patch.textContent;
         break;
       }
       case "replaceSubtree": {
@@ -131,8 +148,8 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
         }
         assertNotSealed(root, target, opts);
         const newNode = parseFragment(patch.nodeXml);
-        const imported = doc.importNode ? doc.importNode(newNode, true) : (newNode as Node);
-        target.parentNode.replaceChild(imported, target);
+        const imported = doc.importNode ? doc.importNode(newNode as any, true) : (newNode as any);
+        (target.parentNode as any).replaceChild?.(imported, target as any);
         break;
       }
       case "sealScene": {
@@ -140,7 +157,7 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
         if (!scene || scene.tagName !== "scene") {
           throw new ParseError(`sealScene: scene "${patch.sceneId}" not found.`);
         }
-        scene.setAttribute("sealed", "true");
+        scene.setAttribute?.("sealed", "true");
         break;
       }
     }
