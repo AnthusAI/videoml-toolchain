@@ -6,6 +6,7 @@ export * from "./sequence.tsx";
 export * from "./storyboard.tsx";
 export * from "./ComposableRenderer.tsx";
 export * from "./engines/index.ts";
+export * from "./live-actions.ts";
 
 // Server-only modules - import directly when needed:
 // import { renderFramesToPng } from "@babulus/renderer/src/render.tsx";

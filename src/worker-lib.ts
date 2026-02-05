@@ -54,41 +54,31 @@ export type ProcessingResult = {
  * Uses dry-run provider in test mode, OpenAI in production
  */
 export const DEFAULT_DSL_PROD = `
-import { defineVideo } from 'babulus';
-
-export default defineVideo((video) => {
-  video.composition('default-video', (composition) => {
-    composition.voiceover({ provider: 'openai' });
-
-    composition.scene('Opening', (scene) => {
-      scene.cue('Welcome', (cue) => {
-        cue.voice((voice) => {
-          voice.say('Welcome to your new video.');
-          voice.say('This is a generated voiceover.');
-        });
-      });
-    });
-  });
-});
+<video id="default-video" title="Default Video" fps="30" width="1280" height="720">
+  <voiceover provider="openai" />
+  <scene id="opening" start="0s" duration="4s">
+    <layer id="opening-layer">
+      <title-slide props='{"eyebrow":"Babulus","title":"Welcome","subtitle":"This is a generated voiceover."}' />
+    </layer>
+    <cue id="opening-cue" label="opening">
+      <voice>Welcome to your new video. This is a generated voiceover.</voice>
+    </cue>
+  </scene>
+</video>
 `;
 
 export const DEFAULT_DSL_TEST = `
-import { defineVideo } from 'babulus';
-
-export default defineVideo((video) => {
-  video.composition('default-video', (composition) => {
-    composition.voiceover({ provider: 'dry-run' });
-
-    composition.scene('Opening', (scene) => {
-      scene.cue('Welcome', (cue) => {
-        cue.voice((voice) => {
-          voice.say('Welcome to your new video.');
-          voice.say('This is a generated voiceover.');
-        });
-      });
-    });
-  });
-});
+<video id="default-video" title="Default Video" fps="30" width="1280" height="720">
+  <voiceover provider="dry-run" />
+  <scene id="opening" start="0s" duration="4s">
+    <layer id="opening-layer">
+      <title-slide props='{"eyebrow":"Babulus","title":"Welcome","subtitle":"This is a generated voiceover."}' />
+    </layer>
+    <cue id="opening-cue" label="opening">
+      <voice>Welcome to your new video. This is a generated voiceover.</voice>
+    </cue>
+  </scene>
+</video>
 `;
 
 export const DEFAULT_DSL = process.env.NODE_ENV === 'test' ? DEFAULT_DSL_TEST : DEFAULT_DSL_PROD;
@@ -209,7 +199,7 @@ export async function processGenerationJob(
 
   // Write DSL to temp file
   ensureDir(workDir);
-  const dslPath = join(workDir, 'source.babulus.ts');
+  const dslPath = join(workDir, 'source.babulus.xml');
   writeFileSync(dslPath, sourceText);
 
   // Load and validate DSL

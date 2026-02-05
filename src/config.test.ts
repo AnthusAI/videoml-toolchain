@@ -78,7 +78,7 @@ describe('Config Loader', () => {
       const configPath = join(babulusDir, 'config.yml');
       writeFileSync(configPath, 'providers: {}');
 
-      const dslPath = join(projectDir, 'video.babulus.ts');
+      const dslPath = join(projectDir, 'video.babulus.xml');
       writeFileSync(dslPath, '// DSL file');
 
       const found = findConfigPath(undefined, dslPath);

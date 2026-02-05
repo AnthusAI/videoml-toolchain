@@ -9,6 +9,7 @@ import { cascadeMarkup, type CascadedMarkup } from "./markup/cascade.ts";
 export type ComposableRendererProps = {
   script: ScriptData;
   debugLayout?: boolean;
+  liveMode?: boolean;
 };
 
 function getScriptDuration(script: ScriptData): number {
@@ -18,12 +19,18 @@ function getScriptDuration(script: ScriptData): number {
   return Math.max(metaDuration, sceneMax);
 }
 
-export const ComposableRenderer = ({ script, debugLayout }: ComposableRendererProps) => {
+export const ComposableRenderer = ({ script, debugLayout, liveMode = false }: ComposableRendererProps) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const timeSec = frame / fps;
-  const scene = useMemo(() => getActiveScene(script, timeSec), [script, timeSec]);
-  const cue = useMemo(() => getActiveCue(script, timeSec), [script, timeSec]);
+  const scene = useMemo(
+    () => getActiveScene(script, timeSec, { allowOpenEnded: liveMode }),
+    [script, timeSec, liveMode]
+  );
+  const cue = useMemo(
+    () => getActiveCue(script, timeSec, { allowOpenEnded: liveMode }),
+    [script, timeSec, liveMode]
+  );
   const durationSec = useMemo(() => getScriptDuration(script), [script]);
   const progressPct = durationSec > 0 ? Math.min(100, Math.max(0, (timeSec / durationSec) * 100)) : 0;
 

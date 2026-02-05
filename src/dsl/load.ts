@@ -1,8 +1,15 @@
+import { readFileSync } from "fs";
+import { extname } from "path";
 import { toFileUrl } from "../util.js";
 import { ParseError } from "../errors.js";
 import type { CompositionSpec, VideoFileSpec } from "./types.js";
+import { loadVideoFileFromXml } from "./xml.js";
 
 export async function loadVideoFile(path: string): Promise<VideoFileSpec> {
+  if (extname(path).toLowerCase() === ".xml") {
+    const xml = readFileSync(path, "utf-8");
+    return loadVideoFileFromXml(xml);
+  }
   const url = toFileUrl(path);
   const cacheBust = Date.now().toString(36);
   const mod = await import(`${url}?babulus=${cacheBust}`);

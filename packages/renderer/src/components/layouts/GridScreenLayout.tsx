@@ -78,12 +78,36 @@ export function GridScreenLayout({
   progress,
   debugLayout = false,
 }: GridScreenLayoutProps) {
+  const normalizedItems = grid.items.map((item, index) => {
+    if (typeof item === "string" || typeof item === "number") {
+      return (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+            borderRadius: 20,
+            background: index % 2 === 0 ? "var(--color-surface, #2b2044)" : "var(--color-surface-2, #3d2b5c)",
+            color: "var(--color-text, #f6f2ff)",
+            fontSize: 28,
+            fontWeight: 600,
+          }}
+        >
+          {String(item)}
+        </div>
+      );
+    }
+    return item;
+  });
+
   const child: FlexPageChildSpec = {
     type: "Grid",
     id: "grid",
     flex: 1,
     props: {
       ...grid,
+      items: normalizedItems,
       padding: grid.padding ?? 0,
     },
   };

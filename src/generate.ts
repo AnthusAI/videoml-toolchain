@@ -218,6 +218,11 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
   };
 
   for (const scene of composition.scenes) {
+    if (scene.time?.start != null && scene.time.end == null) {
+      throw new CompileError(
+        `Scene "${scene.id}" has an open-ended duration. Live mode only: export requires an explicit end or duration.`,
+      );
+    }
     const sceneStart = scene.time ? scene.time.start : now;
     if (scene.time && sceneStart < now - 1e-6) {
       throw new CompileError(`Scene "${scene.id}" starts before previous scene ends`);

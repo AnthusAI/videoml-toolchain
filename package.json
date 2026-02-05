@@ -1,7 +1,7 @@
 {
   "name": "babulus",
   "version": "0.4.0",
-  "description": "Narration-first DSL + audio pipeline for Remotion videos (TypeScript)",
+  "description": "Narration-first XML DSL + audio pipeline for Remotion videos",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -53,6 +53,7 @@
     "@aws-sdk/client-polly": "^3.699.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/ws": "^8.18.1",
+    "@xmldom/xmldom": "^0.8.11",
     "aws-amplify": "^6.16.0",
     "bcryptjs": "^3.0.3",
     "chokidar": "^3.6.0",

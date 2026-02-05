@@ -268,7 +268,7 @@ async function processJob(job: any) {
         // 4. Write DSL to temp file
         const workDir = join(process.cwd(), '.babulus', 'worker', job.id);
         ensureDir(workDir);
-        const dslPath = join(workDir, 'source.babulus.ts');
+        const dslPath = join(workDir, 'source.babulus.xml');
         writeFileSync(dslPath, sourceText);
         
         // 5. Load and Generate

@@ -7,7 +7,7 @@ export type EnvResolver = {
 };
 
 /**
- * Define environment helpers for `.babulus.ts` files.
+ * Define environment helpers for `.babulus.ts` and `.babulus.xml` files.
  *
  * `value(default, overrides)` returns the override for `BABULUS_ENV` if present;
  * otherwise it returns `default`. Provide `fallback` if you want to reuse values

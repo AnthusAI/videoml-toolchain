@@ -18,11 +18,11 @@ import { summarizeUsageFile, summarizeUsageFileDetailed } from "./telemetry.js";
 import type { UsageSummary, UsageUnitType } from "../packages/telemetry/src/index.js";
 
 const program = new Command();
-program.name("babulus").description("Babulus TypeScript CLI");
+program.name("babulus").description("Babulus CLI");
 
 program
   .command("generate")
-  .argument("[dsl]", "Path to .babulus.ts file or directory")
+  .argument("[dsl]", "Path to .babulus.ts or .babulus.xml file or directory")
   .option("--script-out <path>", "Output script JSON path")
   .option("--timeline-out <path>", "Output timeline JSON path")
   .option("--audio-out <path>", "Output audio path")
@@ -127,8 +127,13 @@ program
       const absChanged = resolve(cwd, changedPath);
       const rel = absChanged.startsWith(cwd) ? absChanged.slice(cwd.length + 1) : absChanged;
 
-      // Filter: Only care about .ts files, .yml/.yaml (config), or specific known files
-      if (!absChanged.endsWith(".ts") && !absChanged.endsWith(".yml") && !absChanged.endsWith(".yaml")) {
+      // Filter: Only care about .ts/.xml files, .yml/.yaml (config), or specific known files
+      if (
+        !absChanged.endsWith(".ts") &&
+        !absChanged.endsWith(".xml") &&
+        !absChanged.endsWith(".yml") &&
+        !absChanged.endsWith(".yaml")
+      ) {
         return;
       }
 
@@ -151,9 +156,9 @@ program
       }
 
       // Check if it's a shared/imported file in one of our DSL directories
-      // We assume any other .ts file in these directories is a potential dependency
+      // We assume any other .ts or .xml file in these directories is a potential dependency
       const isInDslDir = dslDirs.some(dir => absChanged.startsWith(dir + sep)); // Use path.sep for cross-platform safety
-      if (isInDslDir && absChanged.endsWith(".ts")) {
+      if (isInDslDir && (absChanged.endsWith(".ts") || absChanged.endsWith(".xml"))) {
         console.error(`\nCHANGE DETECTED (Shared): ${rel}`);
         console.error("Shared file changed; regenerating all compositions...");
         await runOnce();
@@ -165,7 +170,7 @@ program
 
 program
   .command("clean")
-  .argument("[dsl]", "Path to .babulus.ts file or directory")
+  .argument("[dsl]", "Path to .babulus.ts or .babulus.xml file or directory")
   .option("--env <name>", "Environment to clean")
   .option("--only-voice", "Only clean voice/TTS segments", false)
   .option("--only-sfx", "Only clean SFX", false)
@@ -232,7 +237,7 @@ const sfx = program.command("sfx").description("Manage SFX variants and picks");
 
 sfx
   .command("list")
-  .option("--dsl <path>", "Path to .babulus.ts file")
+  .option("--dsl <path>", "Path to .babulus.ts or .babulus.xml file")
   .option("--out-dir <path>", "Override output dir")
   .option("--project-dir <path>", "Project root directory")
   .action(async (opts) => {
@@ -251,7 +256,7 @@ sfx
   .command("next")
   .requiredOption("--clip <id>", "SFX clip id")
   .requiredOption("--variants <n>", "Number of variants", (v) => Number(v))
-  .option("--dsl <path>", "Path to .babulus.ts file")
+  .option("--dsl <path>", "Path to .babulus.ts or .babulus.xml file")
   .option("--out-dir <path>", "Override output dir")
   .option("--apply", "Run generate after changing pick", false)
   .option("--project-dir <path>", "Project root directory")
@@ -268,7 +273,7 @@ sfx
   .command("prev")
   .requiredOption("--clip <id>", "SFX clip id")
   .requiredOption("--variants <n>", "Number of variants", (v) => Number(v))
-  .option("--dsl <path>", "Path to .babulus.ts file")
+  .option("--dsl <path>", "Path to .babulus.ts or .babulus.xml file")
   .option("--out-dir <path>", "Override output dir")
   .option("--apply", "Run generate after changing pick", false)
   .option("--project-dir <path>", "Project root directory")
@@ -285,7 +290,7 @@ sfx
   .command("set")
   .requiredOption("--clip <id>", "SFX clip id")
   .requiredOption("--pick <n>", "Variant index", (v) => Number(v))
-  .option("--dsl <path>", "Path to .babulus.ts file")
+  .option("--dsl <path>", "Path to .babulus.ts or .babulus.xml file")
   .option("--out-dir <path>", "Override output dir")
   .option("--apply", "Run generate after changing pick", false)
   .option("--project-dir <path>", "Project root directory")
@@ -302,7 +307,7 @@ sfx
   .command("archive")
   .requiredOption("--clip <id>", "SFX clip id")
   .option("--keep-pick", "Keep the currently-selected pick", false)
-  .option("--dsl <path>", "Path to .babulus.ts file")
+  .option("--dsl <path>", "Path to .babulus.ts or .babulus.xml file")
   .option("--out-dir <path>", "Override output dir")
   .option("--project-dir <path>", "Project root directory")
   .action(async (opts) => {
@@ -316,7 +321,7 @@ sfx
 sfx
   .command("restore")
   .requiredOption("--clip <id>", "SFX clip id")
-  .option("--dsl <path>", "Path to .babulus.ts file")
+  .option("--dsl <path>", "Path to .babulus.ts or .babulus.xml file")
   .option("--out-dir <path>", "Override output dir")
   .option("--project-dir <path>", "Project root directory")
   .action(async (opts) => {
@@ -328,7 +333,7 @@ sfx
 sfx
   .command("clear")
   .requiredOption("--clip <id>", "SFX clip id")
-  .option("--dsl <path>", "Path to .babulus.ts file")
+  .option("--dsl <path>", "Path to .babulus.ts or .babulus.xml file")
   .option("--out-dir <path>", "Override output dir")
   .option("--project-dir <path>", "Project root directory")
   .action(async (opts) => {
@@ -342,7 +347,7 @@ const usage = program.command("usage").description("Usage telemetry");
 usage
   .command("summarize")
   .option("--ledger <path>", "Path to usage ledger")
-  .option("--dsl <path>", "Path to .babulus.ts file")
+  .option("--dsl <path>", "Path to .babulus.ts or .babulus.xml file")
   .option("--out-dir <path>", "Override output dir")
   .option("--project-dir <path>", "Project root directory")
   .option("--env <name>", "Environment to read")
@@ -541,10 +546,10 @@ function resolveDslPaths(dslArg: string | undefined, cwd: string): string[] {
   }
   const auto = discoverProjectDsls(cwd);
   if (auto.length === 0) {
-    throw new BabulusError("No .babulus.ts files found. Pass a file or directory path, or create one under ./content/");
+    throw new BabulusError("No .babulus.ts or .babulus.xml files found. Pass a file or directory path, or create one under ./content/");
   }
   if (auto.length > 1) {
-    throw new BabulusError(`Multiple .babulus.ts files found (${auto.length}). Pass a specific file or directory path.`);
+    throw new BabulusError(`Multiple .babulus.ts/.babulus.xml files found (${auto.length}). Pass a specific file or directory path.`);
   }
   return [auto[0]];
 }
@@ -568,7 +573,7 @@ function findDslFiles(root: string, recursive = true): string[] {
       }
       continue;
     }
-    if (entry.isFile() && entry.name.endsWith(".babulus.ts")) {
+    if (entry.isFile() && (entry.name.endsWith(".babulus.ts") || entry.name.endsWith(".babulus.xml"))) {
       out.push(full);
     }
   }

@@ -8,6 +8,7 @@ import { ContentLayoutDemo } from "./demo/ContentLayoutDemo.js";
 import { PlaceholderPanel } from "./demo/PlaceholderPanel.js";
 import { TitleSlideLayoutDemo } from "./demo/TitleSlideLayoutDemo.js";
 import { TwoColumnLayoutDemo } from "./demo/TwoColumnLayoutDemo.js";
+import { ActionPulseComponent } from "./demo/ActionPulseComponent.js";
 
 // Layout components
 import { TitleSlideLayout } from "./layouts/TitleSlideLayout.js";
@@ -59,6 +60,7 @@ registry.set("ContentLayoutDemo", ContentLayoutDemo);
 registry.set("PlaceholderPanel", PlaceholderPanel);
 registry.set("TitleSlideLayoutDemo", TitleSlideLayoutDemo);
 registry.set("TwoColumnLayoutDemo", TwoColumnLayoutDemo);
+registry.set("ActionPulse", ActionPulseComponent);
 
 // Register layout components
 registry.set("TitleSlide", TitleSlideLayout);

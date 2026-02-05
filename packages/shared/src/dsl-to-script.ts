@@ -14,12 +14,14 @@ import type { ScriptData, ScriptScene, ScriptCue, ScriptSegment } from "./video.
 export type PlaceholderTimingStrategy =
   | { type: 'uniform' }  // Distribute scenes uniformly across total duration
   | { type: 'cue-count'; secondsPerCue: number }  // Estimate duration based on cue count
-  | { type: 'explicit' };  // Use scene.time() hints if provided (fallback to uniform)
+  | { type: 'explicit' }  // Use scene.time() hints if provided (fallback to uniform)
+  | { type: 'auto'; secondsPerCue?: number }  // Auto-size from visual timing, fallback to cues
+  | { type: 'live'; secondsPerCue?: number };  // Allow open-ended scenes for live mode
 
 /**
  * Converts a CompositionSpec (from DSL execution) into ScriptData with placeholder timing.
  *
- * @param composition - The composition spec from executing .babulus.ts file
+ * @param composition - The composition spec from executing .babulus.ts or .babulus.xml file
  * @param strategy - How to generate placeholder timing (default: cue-count with 3 seconds per cue)
  * @returns ScriptData ready for rendering with ComposableRenderer
  */
@@ -44,7 +46,8 @@ export function dslToScriptData(
   }
 
   // Calculate actual duration based on final scene end time
-  const actualDuration = scenes.length > 0 ? (scenes[scenes.length - 1].endSec ?? totalDuration) : totalDuration;
+  const actualDuration =
+    scenes.length > 0 ? (scenes[scenes.length - 1].endSec ?? totalDuration) : totalDuration;
 
   return {
     scenes,
@@ -53,13 +56,38 @@ export function dslToScriptData(
       fps,
       width,
       height,
-      durationSeconds: actualDuration,
+      durationSeconds: strategy.type === 'live' ? undefined : actualDuration,
     },
     styles: (composition as CompositionStyles).styles,
   };
 }
 
 const isCueSpec = (item: CueSpec | PauseSpec): item is CueSpec => item.kind === "cue";
+
+const getSceneVisualDuration = (sceneSpec: SceneSpec, sceneStart: number): number | null => {
+  let maxEnd: number | null = null;
+  const considerTiming = (timing?: { startSec?: number; endSec?: number }) => {
+    if (!timing) return;
+    if (timing.endSec != null) {
+      maxEnd = maxEnd == null ? timing.endSec : Math.max(maxEnd, timing.endSec);
+    } else if (timing.startSec != null) {
+      maxEnd = maxEnd == null ? timing.startSec : Math.max(maxEnd, timing.startSec);
+    }
+  };
+
+  for (const component of sceneSpec.components ?? []) {
+    considerTiming(component.timing);
+  }
+  for (const layer of sceneSpec.layers ?? []) {
+    considerTiming(layer.timing);
+    for (const component of layer.components ?? []) {
+      considerTiming(component.timing);
+    }
+  }
+
+  if (maxEnd == null) return null;
+  return Math.max(0, maxEnd - sceneStart);
+};
 
 /**
  * Transforms a single scene with placeholder timing.
@@ -73,28 +101,41 @@ function transformScene(
 ): ScriptScene {
   // Calculate scene timing
   const sceneStart = sceneSpec.time?.start ?? currentTime;
-  let sceneDuration: number;
+  let sceneDuration: number | undefined;
+
+  const visualDuration = getSceneVisualDuration(sceneSpec, sceneStart);
 
   if (sceneSpec.time?.end !== undefined) {
     // Explicit timing provided
     sceneDuration = sceneSpec.time.end - sceneStart;
+  } else if (strategy.type === 'auto' && visualDuration != null) {
+    sceneDuration = visualDuration;
+  } else if (strategy.type === 'live') {
+    sceneDuration = undefined;
   } else if (strategy.type === 'cue-count') {
     // Estimate based on cue count
     const cueCount = sceneSpec.items.filter(isCueSpec).length;
     sceneDuration = Math.max(1, cueCount * strategy.secondsPerCue);
+  } else if (strategy.type === 'auto') {
+    const cueCount = sceneSpec.items.filter(isCueSpec).length;
+    const fallbackSeconds = strategy.secondsPerCue ?? 2;
+    sceneDuration = Math.max(1, cueCount * fallbackSeconds);
   } else {
     // Uniform distribution
     sceneDuration = totalDuration / Math.max(1, totalScenes);
   }
 
-  const sceneEnd = sceneStart + sceneDuration;
+  const sceneEnd = sceneDuration != null ? sceneStart + sceneDuration : undefined;
 
   // Transform cues with timing
   const cues: ScriptCue[] = [];
   const cueItems = sceneSpec.items.filter(isCueSpec);
 
   if (cueItems.length > 0) {
-    const cueDuration = sceneDuration / cueItems.length;
+    const cueDuration =
+      sceneDuration != null
+        ? sceneDuration / cueItems.length
+        : Math.max(1, (strategy.type === 'live' ? strategy.secondsPerCue ?? 2 : 2));
 
     cueItems.forEach((cueSpec, idx) => {
       const cueStart = sceneStart + (idx * cueDuration);

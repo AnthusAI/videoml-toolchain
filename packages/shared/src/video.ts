@@ -108,34 +108,47 @@ export const deriveVideoConfig = ({
   return { fps, width, height, durationSec, durationFrames };
 };
 
-const isActiveRange = (timeSec: number, startSec?: number, endSec?: number): boolean => {
+const isActiveRange = (
+  timeSec: number,
+  startSec?: number,
+  endSec?: number,
+  allowOpenEnded = false
+): boolean => {
   if (!Number.isFinite(timeSec)) {
     return false;
   }
   const start = startSec ?? 0;
-  const end = endSec ?? start;
+  const end = endSec ?? (allowOpenEnded ? Number.POSITIVE_INFINITY : start);
   return timeSec >= start && timeSec < end;
 };
 
-export const getActiveScene = (script?: ScriptData | null, timeSec = 0): ScriptScene | null => {
+export const getActiveScene = (
+  script?: ScriptData | null,
+  timeSec = 0,
+  options?: { allowOpenEnded?: boolean }
+): ScriptScene | null => {
+  const allowOpenEnded = options?.allowOpenEnded ?? false;
   const scenes = script?.scenes ?? [];
   for (const scene of scenes) {
-    if (isActiveRange(timeSec, scene.startSec, scene.endSec)) {
-      console.log(`[getActiveScene] timeSec=${timeSec}, found scene=${scene.id} (${scene.startSec}-${scene.endSec}), markup=`, JSON.stringify(scene.markup));
+    if (isActiveRange(timeSec, scene.startSec, scene.endSec, allowOpenEnded)) {
       return scene;
     }
   }
-  console.log(`[getActiveScene] timeSec=${timeSec}, NO SCENE FOUND`);
   return null;
 };
 
-export const getActiveCue = (script?: ScriptData | null, timeSec = 0): ScriptCue | null => {
-  const scene = getActiveScene(script, timeSec);
+export const getActiveCue = (
+  script?: ScriptData | null,
+  timeSec = 0,
+  options?: { allowOpenEnded?: boolean }
+): ScriptCue | null => {
+  const scene = getActiveScene(script, timeSec, options);
   if (!scene) {
     return null;
   }
+  const allowOpenEnded = options?.allowOpenEnded ?? false;
   for (const cue of scene.cues ?? []) {
-    if (isActiveRange(timeSec, cue.startSec, cue.endSec)) {
+    if (isActiveRange(timeSec, cue.startSec, cue.endSec, allowOpenEnded)) {
       return cue;
     }
   }

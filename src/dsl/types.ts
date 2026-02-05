@@ -1,6 +1,6 @@
 export type TimeRange = {
   start: number;
-  end: number;
+  end?: number;
   startIsRelative?: boolean;
   endIsRelative?: boolean;
 };
