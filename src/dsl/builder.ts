@@ -547,6 +547,76 @@ class LayerBuilder {
   icon(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
     return this.component(`icon-${this.spec.components.length}`, 'Icon', props, options);
   }
+
+  /**
+   * Add a Framer Motion demo component.
+   */
+  framerMotionDemo(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`framer-motion-${this.spec.components.length}`, 'FramerMotionDemo', props, options);
+  }
+
+  /**
+   * Add a D3 bar chart demo component.
+   */
+  d3BarChart(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`d3-bar-chart-${this.spec.components.length}`, 'D3BarChart', props, options);
+  }
+
+  /**
+   * Add a Processing/p5 sketch demo component.
+   */
+  processingSketch(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`p5-sketch-${this.spec.components.length}`, 'P5Particles', props, options);
+  }
+
+  /**
+   * Add a Three.js orbit demo component.
+   */
+  threeOrbit(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`three-orbit-${this.spec.components.length}`, 'ThreeOrbit', props, options);
+  }
+
+  /**
+   * Add a Lottie badge demo component.
+   */
+  lottieBadge(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`lottie-badge-${this.spec.components.length}`, 'LottieBadge', props, options);
+  }
+
+  /**
+   * Add a kinetic text demo component.
+   */
+  kineticText(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`kinetic-text-${this.spec.components.length}`, 'KineticText', props, options);
+  }
+
+  /**
+   * Demo: mix multiple animation engines in a single scene (p5 + D3 + Three + Framer + Text).
+   */
+  mixAndMatchDemo(props?: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`mix-and-match-${this.spec.components.length}`, 'MixAndMatchDemo', props ?? {}, options);
+  }
+
+  /**
+   * Add a low-level Anime.js harness demo component.
+   */
+  animeHarnessDemo(props?: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`anime-harness-${this.spec.components.length}`, 'AnimeHarnessDemo', props ?? {}, options);
+  }
+
+  /**
+   * Add a Text Effects demo component (named effects built on Anime.js).
+   */
+  textEffectsDemo(props?: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`text-effects-demo-${this.spec.components.length}`, 'TextEffectsDemo', props ?? {}, options);
+  }
+
+  /**
+   * Add a reusable TextEffects component.
+   */
+  textEffects(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`text-effects-${this.spec.components.length}`, 'TextEffects', props, options);
+  }
 }
 
 class CueBuilder {

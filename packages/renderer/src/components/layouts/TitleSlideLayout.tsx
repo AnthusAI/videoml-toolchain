@@ -1,6 +1,9 @@
 import React from 'react';
 import { applyTransition, type TransitionConfig } from '../../animation/transitions.js';
 import { reviveNode } from '../rehydrate.js';
+import type { ScriptCue } from '@babulus/shared';
+import { TextEffectsComponent } from '../text/TextEffectsComponent.js';
+import type { TextEffectConfig } from '../../engines/text-effects.js';
 
 export type TitleSlideLayoutProps = {
   // Content
@@ -40,6 +43,11 @@ export type TitleSlideLayoutProps = {
     subtitle?: TransitionConfig;
   };
 
+  // Optional text effects (named effects vocabulary, frame-driven)
+  eyebrowEffect?: TextEffectConfig;
+  titleEffect?: TextEffectConfig;
+  subtitleEffect?: TextEffectConfig;
+
   // Timing
   entranceStartFrame?: number;
   exitStartFrame?: number;
@@ -49,6 +57,7 @@ export type TitleSlideLayoutProps = {
   fps?: number;
   videoWidth?: number;
   videoHeight?: number;
+  cue?: ScriptCue;
   styles?: any;
   debugLayout?: boolean;
 
@@ -81,10 +90,14 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
     exit,
     entranceStartFrame = 0,
     exitStartFrame,
+    eyebrowEffect,
+    titleEffect,
+    subtitleEffect,
     frame = 0,
     fps = 30,
     videoWidth = 1920,
     videoHeight = 1080,
+    cue,
     styles,
     debugLayout = false,
     logo,
@@ -148,6 +161,14 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
     }
   }
 
+  // If a TextEffects config is provided, avoid double-animating with layout transitions.
+  if (titleEffect) {
+    titleTransition = { opacity: 1, transform: 'none' };
+  }
+  if (subtitleEffect) {
+    subtitleTransition = { opacity: 1, transform: 'none' };
+  }
+
   // Vertical alignment
   let justifyContent = 'center';
   if (verticalAlign === 'top') justifyContent = 'flex-start';
@@ -208,37 +229,111 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
                     marginBottom: `${Math.max(8, gap * 0.4)}px`,
                   }}
                 >
-                  {eyebrow}
+                  {eyebrowEffect ? (
+                    <TextEffectsComponent
+                      text={eyebrow}
+                      cue={cue}
+                      frame={frame}
+                      fps={fps}
+                      videoWidth={videoWidth}
+                      videoHeight={videoHeight}
+                      effect={eyebrowEffect}
+                      fontSize={eyebrowSize}
+                      fontWeight={eyebrowWeight}
+                      color={finalEyebrowColor}
+                      align={horizontalAlign === 'left' ? 'left' : 'center'}
+                      style={{ display: 'inline-block' }}
+                    />
+                  ) : (
+                    eyebrow
+                  )}
                 </div>
               )}
-              <h1
-                style={{
-                  fontSize: `${titleSize}px`,
-                  fontWeight: titleWeight,
-                  color: finalTitleColor,
-                  fontFamily: fontHeadline,
-                  margin: 0,
-                  opacity: titleTransition.opacity,
-                  transform: titleTransition.transform || 'none',
-                }}
-              >
-                {title}
-              </h1>
-              {subtitle && (
-                <p
+              {titleEffect ? (
+                <div
                   style={{
-                    fontSize: `${subtitleSize}px`,
-                    fontWeight: subtitleWeight,
-                    color: finalSubtitleColor,
-                    fontFamily: fontSubhead,
-                    marginTop: `${gap}px`,
-                    marginBottom: 0,
-                    opacity: subtitleTransition.opacity,
-                    transform: subtitleTransition.transform || 'none',
+                    fontSize: `${titleSize}px`,
+                    fontWeight: titleWeight,
+                    color: finalTitleColor,
+                    fontFamily: fontHeadline,
+                    margin: 0,
+                    opacity: titleTransition.opacity,
+                    transform: titleTransition.transform || 'none',
                   }}
                 >
-                  {subtitle}
-                </p>
+                  <TextEffectsComponent
+                    text={title}
+                    cue={cue}
+                    frame={frame}
+                    fps={fps}
+                    videoWidth={videoWidth}
+                    videoHeight={videoHeight}
+                    effect={titleEffect}
+                    fontSize={titleSize}
+                    fontWeight={titleWeight}
+                    color={finalTitleColor}
+                    align={horizontalAlign === 'left' ? 'left' : 'center'}
+                  />
+                </div>
+              ) : (
+                <h1
+                  style={{
+                    fontSize: `${titleSize}px`,
+                    fontWeight: titleWeight,
+                    color: finalTitleColor,
+                    fontFamily: fontHeadline,
+                    margin: 0,
+                    opacity: titleTransition.opacity,
+                    transform: titleTransition.transform || 'none',
+                  }}
+                >
+                  {title}
+                </h1>
+              )}
+              {subtitle && (
+                subtitleEffect ? (
+                  <div
+                    style={{
+                      fontSize: `${subtitleSize}px`,
+                      fontWeight: subtitleWeight,
+                      color: finalSubtitleColor,
+                      fontFamily: fontSubhead,
+                      marginTop: `${gap}px`,
+                      marginBottom: 0,
+                      opacity: subtitleTransition.opacity,
+                      transform: subtitleTransition.transform || 'none',
+                    }}
+                  >
+                    <TextEffectsComponent
+                      text={subtitle}
+                      cue={cue}
+                      frame={frame}
+                      fps={fps}
+                      videoWidth={videoWidth}
+                      videoHeight={videoHeight}
+                      effect={subtitleEffect}
+                      fontSize={subtitleSize}
+                      fontWeight={subtitleWeight}
+                      color={finalSubtitleColor}
+                      align={horizontalAlign === 'left' ? 'left' : 'center'}
+                    />
+                  </div>
+                ) : (
+                  <p
+                    style={{
+                      fontSize: `${subtitleSize}px`,
+                      fontWeight: subtitleWeight,
+                      color: finalSubtitleColor,
+                      fontFamily: fontSubhead,
+                      marginTop: `${gap}px`,
+                      marginBottom: 0,
+                      opacity: subtitleTransition.opacity,
+                      transform: subtitleTransition.transform || 'none',
+                    }}
+                  >
+                    {subtitle}
+                  </p>
+                )
               )}
             </div>
           </div>
@@ -256,37 +351,111 @@ export function TitleSlideLayout(props: TitleSlideLayoutProps) {
                   marginBottom: `${Math.max(8, gap * 0.4)}px`,
                 }}
               >
-                {eyebrow}
+                {eyebrowEffect ? (
+                  <TextEffectsComponent
+                    text={eyebrow}
+                    cue={cue}
+                    frame={frame}
+                    fps={fps}
+                    videoWidth={videoWidth}
+                    videoHeight={videoHeight}
+                    effect={eyebrowEffect}
+                    fontSize={eyebrowSize}
+                    fontWeight={eyebrowWeight}
+                    color={finalEyebrowColor}
+                    align={horizontalAlign === 'left' ? 'left' : 'center'}
+                    style={{ display: 'inline-block' }}
+                  />
+                ) : (
+                  eyebrow
+                )}
               </div>
             )}
-            <h1
-              style={{
-                fontSize: `${titleSize}px`,
-                fontWeight: titleWeight,
-                color: finalTitleColor,
-                fontFamily: fontHeadline,
-                margin: 0,
-                opacity: titleTransition.opacity,
-                transform: titleTransition.transform || 'none',
-              }}
-            >
-              {title}
-            </h1>
-            {subtitle && (
-              <p
+            {titleEffect ? (
+              <div
                 style={{
-                  fontSize: `${subtitleSize}px`,
-                  fontWeight: subtitleWeight,
-                  color: finalSubtitleColor,
-                  fontFamily: fontSubhead,
-                  marginTop: `${gap}px`,
-                  marginBottom: 0,
-                  opacity: subtitleTransition.opacity,
-                  transform: subtitleTransition.transform || 'none',
+                  fontSize: `${titleSize}px`,
+                  fontWeight: titleWeight,
+                  color: finalTitleColor,
+                  fontFamily: fontHeadline,
+                  margin: 0,
+                  opacity: titleTransition.opacity,
+                  transform: titleTransition.transform || 'none',
                 }}
               >
-                {subtitle}
-              </p>
+                <TextEffectsComponent
+                  text={title}
+                  cue={cue}
+                  frame={frame}
+                  fps={fps}
+                  videoWidth={videoWidth}
+                  videoHeight={videoHeight}
+                  effect={titleEffect}
+                  fontSize={titleSize}
+                  fontWeight={titleWeight}
+                  color={finalTitleColor}
+                  align={horizontalAlign === 'left' ? 'left' : 'center'}
+                />
+              </div>
+            ) : (
+              <h1
+                style={{
+                  fontSize: `${titleSize}px`,
+                  fontWeight: titleWeight,
+                  color: finalTitleColor,
+                  fontFamily: fontHeadline,
+                  margin: 0,
+                  opacity: titleTransition.opacity,
+                  transform: titleTransition.transform || 'none',
+                }}
+              >
+                {title}
+              </h1>
+            )}
+            {subtitle && (
+              subtitleEffect ? (
+                <div
+                  style={{
+                    fontSize: `${subtitleSize}px`,
+                    fontWeight: subtitleWeight,
+                    color: finalSubtitleColor,
+                    fontFamily: fontSubhead,
+                    marginTop: `${gap}px`,
+                    marginBottom: 0,
+                    opacity: subtitleTransition.opacity,
+                    transform: subtitleTransition.transform || 'none',
+                  }}
+                >
+                  <TextEffectsComponent
+                    text={subtitle}
+                    cue={cue}
+                    frame={frame}
+                    fps={fps}
+                    videoWidth={videoWidth}
+                    videoHeight={videoHeight}
+                    effect={subtitleEffect}
+                    fontSize={subtitleSize}
+                    fontWeight={subtitleWeight}
+                    color={finalSubtitleColor}
+                    align={horizontalAlign === 'left' ? 'left' : 'center'}
+                  />
+                </div>
+              ) : (
+                <p
+                  style={{
+                    fontSize: `${subtitleSize}px`,
+                    fontWeight: subtitleWeight,
+                    color: finalSubtitleColor,
+                    fontFamily: fontSubhead,
+                    marginTop: `${gap}px`,
+                    marginBottom: 0,
+                    opacity: subtitleTransition.opacity,
+                    transform: subtitleTransition.transform || 'none',
+                  }}
+                >
+                  {subtitle}
+                </p>
+              )
             )}
             {logo && (
               <div

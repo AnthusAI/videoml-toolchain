@@ -1,6 +1,9 @@
 import React from 'react';
 import { applyTransition, type TransitionConfig } from '../../animation/transitions.js';
 import { easeOutBounce } from '../../animation/easing.js';
+import type { ScriptCue } from '@babulus/shared';
+import { TextEffectsComponent } from '../text/TextEffectsComponent.js';
+import type { TextEffectConfig } from '../../engines/text-effects.js';
 
 export type ChapterHeadingLayoutProps = {
   // Content
@@ -22,10 +25,16 @@ export type ChapterHeadingLayoutProps = {
   numberEntrance?: TransitionConfig;
   titleEntrance?: TransitionConfig;
 
+  // Optional text effects (named effects vocabulary, frame-driven)
+  numberEffect?: TextEffectConfig;
+  titleEffect?: TextEffectConfig;
+  subtitleEffect?: TextEffectConfig;
+
   frame?: number;
   fps?: number;
   videoWidth?: number;
   videoHeight?: number;
+  cue?: ScriptCue;
 };
 
 export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
@@ -40,10 +49,14 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
     numberColor = '#ff6b6b',
     numberEntrance,
     titleEntrance,
+    numberEffect,
+    titleEffect,
+    subtitleEffect,
     frame = 0,
     fps = 30,
     videoWidth = 1920,
     videoHeight = 1080,
+    cue,
   } = props;
 
   // Default animations
@@ -69,12 +82,12 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
   let numberTransition = { opacity: 1, transform: 'none' };
   let titleTransition = { opacity: 1, transform: 'none' };
 
-  if (frame < numberConfig.durationFrames + (numberConfig.delayFrames || 0)) {
+  if (!numberEffect && frame < numberConfig.durationFrames + (numberConfig.delayFrames || 0)) {
     const t = applyTransition(numberConfig, frame, { fps, width: videoWidth, height: videoHeight });
     numberTransition = { opacity: t.opacity ?? 1, transform: t.transform ?? 'none' };
   }
 
-  if (frame < titleConfig.durationFrames + (titleConfig.delayFrames || 0)) {
+  if (!titleEffect && frame < titleConfig.durationFrames + (titleConfig.delayFrames || 0)) {
     const t = applyTransition(titleConfig, frame, { fps, width: videoWidth, height: videoHeight });
     titleTransition = { opacity: t.opacity ?? 1, transform: t.transform ?? 'none' };
   }
@@ -103,7 +116,23 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
             lineHeight: 1,
           }}
         >
-          {number}
+          {numberEffect ? (
+            <TextEffectsComponent
+              text={String(number)}
+              cue={cue}
+              frame={frame}
+              fps={fps}
+              videoWidth={videoWidth}
+              videoHeight={videoHeight}
+              effect={numberEffect}
+              fontSize={numberSize}
+              fontWeight={700}
+              color={numberColor}
+              align="center"
+            />
+          ) : (
+            number
+          )}
         </div>
         <div
           style={{
@@ -113,9 +142,25 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
             transform: titleTransition.transform || 'none',
           }}
         >
-          <div style={{ fontSize: `${titleSize}px`, fontWeight: 700, color: 'var(--color-text, #ffffff)' }}>
-            {title}
-          </div>
+          {titleEffect ? (
+            <TextEffectsComponent
+              text={title}
+              cue={cue}
+              frame={frame}
+              fps={fps}
+              videoWidth={videoWidth}
+              videoHeight={videoHeight}
+              effect={titleEffect}
+              fontSize={titleSize}
+              fontWeight={700}
+              color={'var(--color-text, #ffffff)'}
+              align="center"
+            />
+          ) : (
+            <div style={{ fontSize: `${titleSize}px`, fontWeight: 700, color: 'var(--color-text, #ffffff)' }}>
+              {title}
+            </div>
+          )}
           {subtitle && (
             <div
               style={{
@@ -124,7 +169,23 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
                 marginTop: '16px',
               }}
             >
-              {subtitle}
+              {subtitleEffect ? (
+                <TextEffectsComponent
+                  text={subtitle}
+                  cue={cue}
+                  frame={frame}
+                  fps={fps}
+                  videoWidth={videoWidth}
+                  videoHeight={videoHeight}
+                  effect={subtitleEffect}
+                  fontSize={subtitleSize}
+                  fontWeight={400}
+                  color={'var(--color-text-muted, #cccccc)'}
+                  align="center"
+                />
+              ) : (
+                subtitle
+              )}
             </div>
           )}
         </div>
@@ -156,12 +217,44 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
             transform: numberTransition.transform || 'none',
           }}
         >
-          {number}
+          {numberEffect ? (
+            <TextEffectsComponent
+              text={String(number)}
+              cue={cue}
+              frame={frame}
+              fps={fps}
+              videoWidth={videoWidth}
+              videoHeight={videoHeight}
+              effect={numberEffect}
+              fontSize={numberSize}
+              fontWeight={700}
+              color={numberColor}
+              align="right"
+            />
+          ) : (
+            number
+          )}
         </div>
         <div style={{ opacity: titleTransition.opacity, transform: titleTransition.transform || 'none' }}>
-          <div style={{ fontSize: `${titleSize}px`, fontWeight: 700, color: 'var(--color-text, #ffffff)' }}>
-            {title}
-          </div>
+          {titleEffect ? (
+            <TextEffectsComponent
+              text={title}
+              cue={cue}
+              frame={frame}
+              fps={fps}
+              videoWidth={videoWidth}
+              videoHeight={videoHeight}
+              effect={titleEffect}
+              fontSize={titleSize}
+              fontWeight={700}
+              color={'var(--color-text, #ffffff)'}
+              align="left"
+            />
+          ) : (
+            <div style={{ fontSize: `${titleSize}px`, fontWeight: 700, color: 'var(--color-text, #ffffff)' }}>
+              {title}
+            </div>
+          )}
           {subtitle && (
             <div
               style={{
@@ -170,7 +263,23 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
                 marginTop: '16px',
               }}
             >
-              {subtitle}
+              {subtitleEffect ? (
+                <TextEffectsComponent
+                  text={subtitle}
+                  cue={cue}
+                  frame={frame}
+                  fps={fps}
+                  videoWidth={videoWidth}
+                  videoHeight={videoHeight}
+                  effect={subtitleEffect}
+                  fontSize={subtitleSize}
+                  fontWeight={400}
+                  color={'var(--color-text-muted, #cccccc)'}
+                  align="left"
+                />
+              ) : (
+                subtitle
+              )}
             </div>
           )}
         </div>
@@ -201,7 +310,23 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
             transform: numberTransition.transform || 'none',
           }}
         >
-          Chapter {number}:
+          {numberEffect ? (
+            <TextEffectsComponent
+              text={`Chapter ${String(number)}:`}
+              cue={cue}
+              frame={frame}
+              fps={fps}
+              videoWidth={videoWidth}
+              videoHeight={videoHeight}
+              effect={numberEffect}
+              fontSize={numberSize * 0.5}
+              fontWeight={700}
+              color={numberColor}
+              align="left"
+            />
+          ) : (
+            <>Chapter {number}:</>
+          )}
         </span>
         <span
           style={{
@@ -212,7 +337,23 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
             transform: titleTransition.transform || 'none',
           }}
         >
-          {title}
+          {titleEffect ? (
+            <TextEffectsComponent
+              text={title}
+              cue={cue}
+              frame={frame}
+              fps={fps}
+              videoWidth={videoWidth}
+              videoHeight={videoHeight}
+              effect={titleEffect}
+              fontSize={titleSize}
+              fontWeight={700}
+              color={'var(--color-text, #ffffff)'}
+              align="left"
+            />
+          ) : (
+            title
+          )}
         </span>
       </div>
     </div>

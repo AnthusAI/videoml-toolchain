@@ -1,6 +1,8 @@
 import React from "react";
 import type { ScriptCue } from "@babulus/shared";
 import type { CascadedStyles } from "../styles/cascade.ts";
+import { TextEffectsComponent } from "./text/TextEffectsComponent.js";
+import type { TextEffectConfig } from "../engines/text-effects.js";
 
 export type SubtitleProps = {
   text?: string; // Explicit text
@@ -10,9 +12,13 @@ export type SubtitleProps = {
   color?: string;
   textAlign?: "left" | "center" | "right";
   position?: { x?: number | string; y?: number | string };
+  textEffect?: TextEffectConfig;
   // Injected by renderer
   cue?: ScriptCue;
   frame?: number;
+  fps?: number;
+  videoWidth?: number;
+  videoHeight?: number;
   styles?: CascadedStyles;
 };
 
@@ -25,8 +31,13 @@ export function SubtitleComponent(props: SubtitleProps) {
     color,
     textAlign,
     position = { x: 48, y: 120 },
+    textEffect,
     cue,
     styles = {} as CascadedStyles,
+    frame,
+    fps,
+    videoWidth,
+    videoHeight,
   } = props;
 
   // Resolve text: explicit text takes precedence, then binding, then default to cue.text
@@ -38,6 +49,37 @@ export function SubtitleComponent(props: SubtitleProps) {
 
   // For center-aligned text, use transform to center around the position
   const transform = resolvedTextAlign === "center" ? "translateX(-50%)" : undefined;
+
+  if (textEffect) {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          left: position.x,
+          top: position.y,
+          textAlign: resolvedTextAlign,
+          fontFamily: styles.fontFamily ?? "ui-sans-serif, system-ui, sans-serif",
+          opacity: styles._computedOpacity ?? 1,
+          transform,
+        }}
+      >
+        <TextEffectsComponent
+          text={displayText}
+          effect={textEffect}
+          frame={frame}
+          fps={fps}
+          videoWidth={videoWidth}
+          videoHeight={videoHeight}
+          fontSize={fontSize ?? styles.fontSize ?? 20}
+          fontWeight={fontWeight ?? styles.fontWeight ?? 400}
+          color={color ?? styles.color ?? "#cbd5f5"}
+          align={resolvedTextAlign}
+          fontFamily={styles.fontFamily ?? "ui-sans-serif, system-ui, sans-serif"}
+          style={{ display: "inline-block", width: "auto", height: "auto" }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div

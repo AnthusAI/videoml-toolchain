@@ -18,7 +18,18 @@
     "./storyboard-render": "./src/storyboard-render.ts"
   },
   "dependencies": {
-    "@babulus/shared": "file:../shared"
+    "@babulus/shared": "file:../shared",
+    "animejs": "^4.1.2",
+    "d3": "^7.9.0",
+    "framer-motion": "^11.0.0",
+    "lottie-web": "^5.12.0",
+    "p5": "^1.9.0",
+    "three": "^0.163.0"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/p5": "^1.7.6",
+    "@types/three": "^0.163.0"
   },
   "peerDependencies": {
     "react": "^18.0.0",

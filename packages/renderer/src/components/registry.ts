@@ -32,6 +32,18 @@ import { CodeBlockComponent } from "./motion/CodeBlockComponent.js";
 import { IconComponent } from "./motion/IconComponent.js";
 import { FontGridComponent } from "./motion/FontGridComponent.js";
 
+// Engine demo components
+import { FramerMotionDemoComponent } from "./engines/FramerMotionDemoComponent.js";
+import { D3BarChartComponent } from "./engines/D3BarChartComponent.js";
+import { P5ParticlesComponent } from "./engines/P5ParticlesComponent.js";
+import { ThreeOrbitComponent } from "./engines/ThreeOrbitComponent.js";
+import { LottieBadgeComponent } from "./engines/LottieBadgeComponent.js";
+import { KineticTextComponent } from "./engines/KineticTextComponent.js";
+import { MixAndMatchDemoComponent } from "./engines/MixAndMatchDemoComponent.js";
+import { AnimeHarnessDemoComponent } from "./engines/AnimeHarnessDemoComponent.js";
+import { TextEffectsDemoComponent } from "./engines/TextEffectsDemoComponent.js";
+import { TextEffectsComponent } from "./text/TextEffectsComponent.js";
+
 export type ComponentType = React.ComponentType<any>;
 
 const registry = new Map<string, ComponentType>();
@@ -70,6 +82,18 @@ registry.set("Callout", CalloutComponent);
 registry.set("CodeBlock", CodeBlockComponent);
 registry.set("Icon", IconComponent);
 registry.set("FontGrid", FontGridComponent);
+
+// Register engine demo components
+registry.set("FramerMotionDemo", FramerMotionDemoComponent);
+registry.set("D3BarChart", D3BarChartComponent);
+registry.set("P5Particles", P5ParticlesComponent);
+registry.set("ThreeOrbit", ThreeOrbitComponent);
+registry.set("LottieBadge", LottieBadgeComponent);
+registry.set("KineticText", KineticTextComponent);
+registry.set("MixAndMatchDemo", MixAndMatchDemoComponent);
+registry.set("AnimeHarnessDemo", AnimeHarnessDemoComponent);
+registry.set("TextEffectsDemo", TextEffectsDemoComponent);
+registry.set("TextEffects", TextEffectsComponent);
 
 export function registerComponent(name: string, component: ComponentType): void {
   registry.set(name, component);

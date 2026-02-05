@@ -1,6 +1,8 @@
 import React from "react";
 import type { ScriptScene } from "@babulus/shared";
 import type { CascadedStyles } from "../styles/cascade.ts";
+import { TextEffectsComponent } from "./text/TextEffectsComponent.js";
+import type { TextEffectConfig } from "../engines/text-effects.js";
 
 export type TitleProps = {
   text?: string; // Explicit text
@@ -8,11 +10,16 @@ export type TitleProps = {
   fontSize?: number;
   fontWeight?: number | string;
   color?: string;
+  textColor?: string;
   textAlign?: "left" | "center" | "right";
   position?: { x?: number | string; y?: number | string };
+  textEffect?: TextEffectConfig;
   // Injected by renderer
   scene?: ScriptScene;
   frame?: number;
+  fps?: number;
+  videoWidth?: number;
+  videoHeight?: number;
   styles?: CascadedStyles;
 };
 
@@ -25,7 +32,13 @@ export function TitleComponent(props: TitleProps) {
     color,
     textAlign,
     position = { x: 48, y: 48 },
+    textEffect,
+    textColor,
     scene,
+    frame,
+    fps,
+    videoWidth,
+    videoHeight,
     styles = {} as CascadedStyles,
   } = props;
 
@@ -40,9 +53,6 @@ export function TitleComponent(props: TitleProps) {
   const containerStyle: React.CSSProperties = {
     position: "absolute",
     top: position.y,
-    fontSize: fontSize ?? styles.fontSize ?? 48,
-    fontWeight: fontWeight ?? styles.fontWeight ?? 700,
-    fontFamily: styles.fontFamily ?? "ui-sans-serif, system-ui, sans-serif",
     opacity: styles._computedOpacity ?? 1,
   };
 
@@ -50,11 +60,47 @@ export function TitleComponent(props: TitleProps) {
     // For centered titles, use left:50% and translateX(-50%) on the span itself
     containerStyle.left = "50%";
     containerStyle.display = "inline-block";
+    if (textEffect) {
+      containerStyle.transform = "translateX(-50%)";
+    }
   } else {
     // For left-aligned titles, position at the specified x
     containerStyle.left = position.x;
     containerStyle.textAlign = resolvedTextAlign;
   }
+
+  if (textEffect) {
+    const pillStyle: React.CSSProperties = {
+      display: "inline-block",
+      padding: "0.18em 0.22em",
+      backgroundColor: color ?? styles.color ?? "#c7007e",
+    };
+
+    return (
+      <div style={containerStyle}>
+        <span style={pillStyle}>
+          <TextEffectsComponent
+            text={displayText}
+            effect={textEffect}
+            frame={frame}
+            fps={fps}
+            videoWidth={videoWidth}
+            videoHeight={videoHeight}
+            fontSize={fontSize ?? styles.fontSize ?? 48}
+            fontWeight={fontWeight ?? styles.fontWeight ?? 700}
+            color={textColor ?? "#ffffff"}
+            align={resolvedTextAlign}
+            fontFamily={styles.fontFamily ?? "ui-sans-serif, system-ui, sans-serif"}
+            style={{ display: "inline-block", width: "auto", height: "auto" }}
+          />
+        </span>
+      </div>
+    );
+  }
+
+  containerStyle.fontSize = fontSize ?? styles.fontSize ?? 48;
+  containerStyle.fontWeight = fontWeight ?? styles.fontWeight ?? 700;
+  containerStyle.fontFamily = styles.fontFamily ?? "ui-sans-serif, system-ui, sans-serif";
 
   const spanStyle: React.CSSProperties = {
     display: "inline-block",
