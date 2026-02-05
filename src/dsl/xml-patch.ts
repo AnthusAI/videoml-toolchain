@@ -13,7 +13,7 @@ type PatchOptions = {
   enforceSealed?: boolean;
 };
 
-const isElementNode = (node: Node): node is Element => node.nodeType === 1;
+const isElementNode = (node: any): node is any => Boolean(node && node.nodeType === 1);
 
 const walkElements = (root: Element, visit: (el: Element) => void): void => {
   const stack: Element[] = [root];
@@ -21,7 +21,7 @@ const walkElements = (root: Element, visit: (el: Element) => void): void => {
     const node = stack.pop();
     if (!node) continue;
     visit(node);
-    const children = Array.from(node.childNodes).filter(isElementNode) as Element[];
+    const children = Array.from(node.childNodes as any[]).filter(isElementNode) as any[];
     for (let i = children.length - 1; i >= 0; i -= 1) {
       stack.push(children[i]);
     }
@@ -65,7 +65,7 @@ const parseFragment = (nodeXml: string): Element => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<root>${nodeXml}</root>`, "text/xml");
   const root = doc.documentElement;
-  const firstChild = Array.from(root.childNodes).find(isElementNode);
+  const firstChild = Array.from(root.childNodes as any[]).find(isElementNode);
   if (!firstChild) {
     throw new ParseError("nodeXml must contain a single root element.");
   }
@@ -89,7 +89,7 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
         assertNotSealed(root, parent, opts);
         const newNode = parseFragment(patch.nodeXml);
         const imported = doc.importNode ? doc.importNode(newNode, true) : (newNode as Node);
-        const children = Array.from(parent.childNodes).filter(isElementNode);
+  const children = Array.from(parent.childNodes as any[]).filter(isElementNode);
         if (patch.index == null || patch.index >= children.length) {
           parent.appendChild(imported);
         } else {
