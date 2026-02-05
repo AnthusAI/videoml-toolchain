@@ -78,6 +78,18 @@ const assertNotSealed = (root: ElementLike, node: ElementLike, opts?: PatchOptio
   }
 };
 
+const requireMethod = <T extends Function>(
+  target: unknown,
+  name: string,
+  op: string
+): T => {
+  const value = (target as Record<string, unknown> | null | undefined)?.[name];
+  if (typeof value !== "function") {
+    throw new ParseError(`${op}: missing DOM method "${name}".`);
+  }
+  return value as T;
+};
+
 const parseFragment = (nodeXml: string): ElementLike => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<root>${nodeXml}</root>`, "text/xml");
@@ -108,9 +120,13 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
         const imported = doc.importNode ? doc.importNode(newNode as any, true) : (newNode as any);
         const children = Array.from(parent.childNodes ?? []).filter(isElementNode);
         if (patch.index == null || patch.index >= children.length) {
-          parent.appendChild?.(imported);
+          requireMethod<(child: NodeLike) => void>(parent, "appendChild", "appendNode")(imported);
         } else {
-          parent.insertBefore?.(imported, children[patch.index] as any);
+          requireMethod<(child: NodeLike, ref: NodeLike | null) => void>(
+            parent,
+            "insertBefore",
+            "appendNode"
+          )(imported, children[patch.index] as any);
         }
         break;
       }
@@ -120,7 +136,9 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
           throw new ParseError(`removeNode: node "${patch.nodeId}" not found.`);
         }
         assertNotSealed(root, target, opts);
-        (target.parentNode as any).removeChild?.(target as any);
+        requireMethod<(child: NodeLike) => void>(target.parentNode, "removeChild", "removeNode")(
+          target as any
+        );
         break;
       }
       case "setAttr": {
@@ -128,9 +146,12 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
         if (!target) throw new ParseError(`setAttr: node "${patch.nodeId}" not found.`);
         assertNotSealed(root, target, opts);
         if (patch.value == null) {
-          target.removeAttribute?.(patch.name);
+          requireMethod<(name: string) => void>(target, "removeAttribute", "setAttr")(patch.name);
         } else {
-          target.setAttribute?.(patch.name, patch.value);
+          requireMethod<(name: string, value: string) => void>(target, "setAttribute", "setAttr")(
+            patch.name,
+            patch.value
+          );
         }
         break;
       }
@@ -149,7 +170,11 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
         assertNotSealed(root, target, opts);
         const newNode = parseFragment(patch.nodeXml);
         const imported = doc.importNode ? doc.importNode(newNode as any, true) : (newNode as any);
-        (target.parentNode as any).replaceChild?.(imported, target as any);
+        requireMethod<(newChild: NodeLike, oldChild: NodeLike) => void>(
+          target.parentNode,
+          "replaceChild",
+          "replaceSubtree"
+        )(imported, target as any);
         break;
       }
       case "sealScene": {
@@ -157,7 +182,10 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
         if (!scene || scene.tagName !== "scene") {
           throw new ParseError(`sealScene: scene "${patch.sceneId}" not found.`);
         }
-        scene.setAttribute?.("sealed", "true");
+        requireMethod<(name: string, value: string) => void>(scene, "setAttribute", "sealScene")(
+          "sealed",
+          "true"
+        );
         break;
       }
     }
