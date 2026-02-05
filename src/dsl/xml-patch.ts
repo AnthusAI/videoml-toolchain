@@ -15,8 +15,8 @@ type PatchOptions = {
 
 type NodeLike = {
   nodeType: number;
-  parentNode?: NodeLike | null;
-  childNodes?: ArrayLike<NodeLike>;
+  parentNode: NodeLike | null;
+  childNodes: ArrayLike<NodeLike> | null;
 };
 
 type ElementLike = NodeLike & {
@@ -93,7 +93,7 @@ const requireMethod = <T extends Function>(
 const parseFragment = (nodeXml: string): ElementLike => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<root>${nodeXml}</root>`, "text/xml");
-  const root = doc.documentElement as ElementLike;
+  const root = doc.documentElement as unknown as ElementLike;
   const firstChild = Array.from(root.childNodes ?? []).find(isElementNode);
   if (!firstChild) {
     throw new ParseError("nodeXml must contain a single root element.");
@@ -105,7 +105,7 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
   const parser = new DOMParser();
   const serializer = new XMLSerializer();
   const doc = parser.parseFromString(xml, "text/xml");
-  const root = doc.documentElement as ElementLike;
+  const root = doc.documentElement as unknown as ElementLike;
   if (!root || root.tagName !== "video") {
     throw new ParseError("XML root must be <video>.");
   }
