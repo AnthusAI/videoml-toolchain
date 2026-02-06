@@ -5,7 +5,15 @@
  * Placeholder timing provides "good enough" preview for visual verification.
  */
 
-import type { CompositionSpec, SceneSpec, CueSpec, VoiceSegmentSpec, LayerSpec, ComponentSpec, PauseSpec } from "babulus/dsl";
+import type {
+  CompositionSpec,
+  SceneSpec,
+  CueSpec,
+  VoiceSegmentSpec,
+  LayerSpec,
+  ComponentSpec,
+  PauseSpec,
+} from "../../../src/dsl/index.ts";
 import type { ScriptData, ScriptScene, ScriptCue, ScriptSegment } from "./video.js";
 
 /**
@@ -137,7 +145,7 @@ function transformScene(
         ? sceneDuration / cueItems.length
         : Math.max(1, (strategy.type === 'live' ? strategy.secondsPerCue ?? 2 : 2));
 
-    cueItems.forEach((cueSpec, idx) => {
+    cueItems.forEach((cueSpec: CueSpec, idx: number) => {
       const cueStart = sceneStart + (idx * cueDuration);
       const cueEnd = cueStart + cueDuration;
 
