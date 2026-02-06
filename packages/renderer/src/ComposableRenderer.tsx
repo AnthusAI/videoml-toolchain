@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { getActiveCue, getActiveScene, type ScriptData } from "@babulus/shared";
+import { getActiveCue, getActiveScene, type ScriptData } from "./shared.ts";
 import { useCurrentFrame, useVideoConfig } from "./context.tsx";
 import { getComponent } from "./components/registry.ts";
 import type { ComponentSpec, LayerSpec, VisualStyles, SemanticMarkup } from "../../../src/dsl/types.ts";
@@ -14,7 +14,7 @@ export type ComposableRendererProps = {
 
 function getScriptDuration(script: ScriptData): number {
   const metaDuration = script.meta?.durationSeconds ?? 0;
-  const sceneEnds = (script.scenes ?? []).map((scene) => scene.endSec ?? 0);
+  const sceneEnds = (script.scenes ?? []).map((scene: { endSec?: number | null }) => scene.endSec ?? 0);
   const sceneMax = sceneEnds.length ? Math.max(...sceneEnds) : 0;
   return Math.max(metaDuration, sceneMax);
 }

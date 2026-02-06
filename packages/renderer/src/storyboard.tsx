@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { getActiveCue, getActiveScene, type ScriptData, type ScriptScene, type ScriptCue } from "@babulus/shared";
+import { getActiveCue, getActiveScene, type ScriptData, type ScriptScene, type ScriptCue } from "./shared.ts";
 import { useCurrentFrame, useVideoConfig } from "./context.tsx";
 
 export type StoryboardRendererProps = {

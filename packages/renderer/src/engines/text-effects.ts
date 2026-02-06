@@ -1,4 +1,4 @@
-import type { ScriptCue } from '@babulus/shared';
+import type { ScriptCue } from '../shared.ts';
 import { cueStartFrame } from './timing.js';
 
 export type TextEffectUnit = 'chars' | 'words' | 'lines';

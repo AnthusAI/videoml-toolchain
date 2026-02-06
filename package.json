@@ -12,7 +12,7 @@
     "packages/*"
   ],
   "overrides": {
-    "graphql": "^16.8.1",
+    "graphql": "15.10.1",
     "graphql-compose": "^9.0.10"
   },
   "exports": {
@@ -62,6 +62,7 @@
     "bcryptjs": "^3.0.3",
     "chokidar": "^3.6.0",
     "commander": "^12.1.0",
+    "graphql": "15.10.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tsx": "^4.19.0",

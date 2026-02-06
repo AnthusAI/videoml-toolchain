@@ -1,4 +1,4 @@
-import type { ScriptCue } from '@babulus/shared';
+import type { ScriptCue } from '../shared.ts';
 
 export const cueStartFrame = (cue: ScriptCue | null | undefined, fps: number): number => {
   if (!cue) return 0;

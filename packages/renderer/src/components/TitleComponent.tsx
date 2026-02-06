@@ -1,5 +1,5 @@
 import React from "react";
-import type { ScriptScene } from "@babulus/shared";
+import type { ScriptScene } from "../shared.ts";
 import type { CascadedStyles } from "../styles/cascade.ts";
 import { TextEffectsComponent } from "./text/TextEffectsComponent.js";
 import type { TextEffectConfig } from "../engines/text-effects.js";

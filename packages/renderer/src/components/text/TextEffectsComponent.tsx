@@ -1,4 +1,4 @@
-import type { ScriptCue } from '@babulus/shared';
+import type { ScriptCue } from '../../shared.ts';
 import { AnimeJsBase, type AnimeJsBaseProps } from '../../engines/AnimeJsBase.js';
 import {
   effectToAnimeProps,

@@ -1,5 +1,5 @@
-import type { ScriptData } from "@babulus/shared";
-import { deriveVideoConfig, type TimelineData } from "@babulus/shared";
+import type { ScriptData } from "./shared.ts";
+import { deriveVideoConfig, type TimelineData } from "./shared.ts";
 import { renderFramesToHtml, type RenderFramesHtmlOptions, type RenderFramesResult } from "./render.js";
 import { ComposableRenderer } from "./ComposableRenderer.js";
 
