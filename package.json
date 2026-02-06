@@ -52,7 +52,7 @@
     "test": "npm run bdd"
   },
   "dependencies": {
-    "@aws-amplify/backend": "^1.19.0",
+    "@aws-amplify/backend": "1.19.0",
     "@aws-amplify/backend-cli": "^1.8.1",
     "@aws-sdk/client-polly": "^3.699.0",
     "@types/bcryptjs": "^2.4.6",
