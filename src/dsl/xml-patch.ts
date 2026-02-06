@@ -106,8 +106,8 @@ export const applyVomPatches = (xml: string, patches: VomPatch[], opts?: PatchOp
   const serializer = new XMLSerializer();
   const doc = parser.parseFromString(xml, "text/xml");
   const root = doc.documentElement as unknown as ElementLike;
-  if (!root || root.tagName !== "video") {
-    throw new ParseError("XML root must be <video>.");
+  if (!root || root.tagName !== "videoml") {
+    throw new ParseError("XML root must be <videoml>.");
   }
 
   for (const patch of patches) {

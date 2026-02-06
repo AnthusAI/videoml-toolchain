@@ -50,6 +50,7 @@ test-projects/**/generated/
 # Amplify
 amplify_outputs.json
 apps/studio-web/.amplify/
+apps/studio-web/.npm/
 apps/studio-web/amplify/functions/**/package-lock.json
 src/videos/**
 

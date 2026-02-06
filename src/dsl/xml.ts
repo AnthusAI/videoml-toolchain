@@ -831,8 +831,8 @@ export const loadVideoFileFromXml = (xml: string): VideoFileSpec => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, "text/xml");
   const root = doc.documentElement;
-  if (!root || root.tagName !== "video") {
-    throw new ParseError("XML root must be <video>.");
+  if (!root || root.tagName !== "videoml") {
+    throw new ParseError("XML root must be <videoml>.");
   }
 
   const attrs = parseAttributes(asElementLike(root));
@@ -940,7 +940,7 @@ export const loadVideoFileFromXml = (xml: string): VideoFileSpec => {
   }
 
   if (scenes.length === 0) {
-    throw new ParseError("video requires at least one scene.");
+    throw new ParseError("videoml requires at least one scene.");
   }
 
   const cueIds = new Set<string>();

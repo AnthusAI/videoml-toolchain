@@ -54,7 +54,7 @@ export type ProcessingResult = {
  * Uses dry-run provider in test mode, OpenAI in production
  */
 export const DEFAULT_DSL_PROD = `
-<video id="default-video" title="Default Video" fps="30" width="1280" height="720">
+<videoml id="default-video" title="Default Video" fps="30" width="1280" height="720">
   <voiceover provider="openai" />
   <scene id="opening" start="0s" duration="4s">
     <layer id="opening-layer">
@@ -64,11 +64,11 @@ export const DEFAULT_DSL_PROD = `
       <voice>Welcome to your new video. This is a generated voiceover.</voice>
     </cue>
   </scene>
-</video>
+</videoml>
 `;
 
 export const DEFAULT_DSL_TEST = `
-<video id="default-video" title="Default Video" fps="30" width="1280" height="720">
+<videoml id="default-video" title="Default Video" fps="30" width="1280" height="720">
   <voiceover provider="dry-run" />
   <scene id="opening" start="0s" duration="4s">
     <layer id="opening-layer">
@@ -78,7 +78,7 @@ export const DEFAULT_DSL_TEST = `
       <voice>Welcome to your new video. This is a generated voiceover.</voice>
     </cue>
   </scene>
-</video>
+</videoml>
 `;
 
 export const DEFAULT_DSL = process.env.NODE_ENV === 'test' ? DEFAULT_DSL_TEST : DEFAULT_DSL_PROD;
