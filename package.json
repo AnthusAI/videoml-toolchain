@@ -11,6 +11,10 @@
     "apps/*",
     "packages/*"
   ],
+  "overrides": {
+    "graphql": "^16.8.1",
+    "graphql-compose": "^9.0.10"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./dsl": "./src/dsl/index.ts",

@@ -7,6 +7,7 @@ import { loadManifest, getManifestDuration, resolveCachedSegment, resolveCachedS
 import { hashKey, safePrefix, ensureDir } from "./util.js";
 import { makeBullet, type Script, scriptToJson } from "./models.js";
 import { getTtsProvider } from "./providers/tts/registry.js";
+import { estimateDurationSec } from "./providers/tts/dry-run.js";
 import { getSfxProvider } from "./providers/sfx/registry.js";
 import { getMusicProvider } from "./providers/music/registry.js";
 import { type CompositionSpec, type PauseSpec, type SceneSpec, type VoiceSegmentSpec, type AudioClipSpec } from "./dsl/types.js";
@@ -75,8 +76,14 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
   const sampleRateHz = voiceover.sampleRateHz ?? 44100;
   const leadInSec = voiceover.leadInSeconds ?? 0;
   const defaultTrimEnd = voiceover.trimEndSeconds ?? 0;
-  const providerName = providerOverride ?? voiceover.provider ?? getDefaultProvider(config) ?? "dry-run";
+  const providerName = providerOverride ?? voiceover.provider ?? getDefaultProvider(config);
+  if (!providerName) {
+    throw new CompileError(
+      "No TTS provider configured. Set tts.default_provider or providers.openai.api_key (or pass --provider).",
+    );
+  }
   const provider = getTtsProvider(providerName, config);
+  const dryRunMode = providerName === "dry-run";
   const resolvedModel = voiceover.model ?? (provider as { defaultModel?: string }).defaultModel ?? null;
   const resolvedVoice = voiceover.voice ?? (provider as { defaultVoice?: string }).defaultVoice ?? null;
 
@@ -92,7 +99,9 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
   const currentEnv = getEnvironment();
   const envCacheDir = resolveEnvCacheDir(outDir, currentEnv);
   const segmentsDir = join(envCacheDir, "segments");
-  ensureDir(segmentsDir);
+  if (!dryRunMode) {
+    ensureDir(segmentsDir);
+  }
   const usagePath = options.usagePath === undefined ? join(envCacheDir, "usage.jsonl") : options.usagePath;
   const usageLedger = usagePath ? createUsageLedger(usagePath) : null;
   const rateCard = getRateCard(config);
@@ -200,13 +209,15 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     now = leadInSec;
     timelineItems.push({ type: "lead_in", startSec: 0, endSec: now, seconds: now });
 
-    // Generate silence audio file for lead-in
-    const silenceKey = hashKey({ kind: "silence", durationSec: leadInSec, sampleRateHz });
-    const silencePath = join(segmentsDir, `silence-${safePrefix(silenceKey)}.wav`);
-    if (!existsSync(silencePath)) {
-      writeSilenceWav(silencePath, leadInSec, sampleRateHz);
+    if (!dryRunMode) {
+      // Generate silence audio file for lead-in
+      const silenceKey = hashKey({ kind: "silence", durationSec: leadInSec, sampleRateHz });
+      const silencePath = join(segmentsDir, `silence-${safePrefix(silenceKey)}.wav`);
+      if (!existsSync(silencePath)) {
+        writeSilenceWav(silencePath, leadInSec, sampleRateHz);
+      }
+      segmentPathsForConcat.push(silencePath);
     }
-    segmentPathsForConcat.push(silencePath);
   }
 
   const recordUsageEvent = (entry: Omit<UsageEntry, "timestamp">) => {
@@ -241,13 +252,15 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
             now += pause;
             timelineItems.push({ type: "pause", sceneId: scene.id, startSec: start, endSec: now, seconds: pause });
 
-            // Generate silence audio file for this pause
-            const silenceKey = hashKey({ kind: "silence", durationSec: pause, sampleRateHz });
-            const silencePath = join(segmentsDir, `silence-${safePrefix(silenceKey)}.wav`);
-            if (!existsSync(silencePath)) {
-              writeSilenceWav(silencePath, pause, sampleRateHz);
+            if (!dryRunMode) {
+              // Generate silence audio file for this pause
+              const silenceKey = hashKey({ kind: "silence", durationSec: pause, sampleRateHz });
+              const silencePath = join(segmentsDir, `silence-${safePrefix(silenceKey)}.wav`);
+              if (!existsSync(silencePath)) {
+                writeSilenceWav(silencePath, pause, sampleRateHz);
+              }
+              segmentPathsForConcat.push(silencePath);
             }
-            segmentPathsForConcat.push(silencePath);
           }
         }
       }
@@ -258,13 +271,17 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
         now += pauseSec;
         timelineItems.push({ type: "pause", sceneId: scene.id, startSec: start, endSec: now, seconds: pauseSec });
 
-        // Generate silence audio file for this pause
-        const silenceKey = hashKey({ kind: "silence", durationSec: pauseSec, sampleRateHz });
-        const silencePath = join(segmentsDir, `silence-${safePrefix(silenceKey)}.wav`);
-        if (!existsSync(silencePath)) {
-          writeSilenceWav(silencePath, pauseSec, sampleRateHz);
+        if (!dryRunMode) {
+          if (!dryRunMode) {
+            // Generate silence audio file for this pause
+            const silenceKey = hashKey({ kind: "silence", durationSec: pauseSec, sampleRateHz });
+            const silencePath = join(segmentsDir, `silence-${safePrefix(silenceKey)}.wav`);
+            if (!existsSync(silencePath)) {
+              writeSilenceWav(silencePath, pauseSec, sampleRateHz);
+            }
+            segmentPathsForConcat.push(silencePath);
+          }
         }
-        segmentPathsForConcat.push(silencePath);
 
         continue;
       }
@@ -301,66 +318,78 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
           trimEndSec: trimEndCfg,
           ctx: ttsContext,
         });
-        segmentKeyCounts[segKey] = (segmentKeyCounts[segKey] ?? 0) + 1;
-        const occurrence = segmentKeyCounts[segKey];
-        const ttsExt = providerName === "elevenlabs" ? ".mp3" : ".wav";
-        let segPath = join(segmentsDir, `${scene.id}--${cue.id}--tts--${safePrefix(segKey)}--${occurrence}${ttsExt}`);
-
-        const cached = resolveCachedSegment(outDir, currentEnv, segKey, scene.id, cue.id, occurrence, ttsExt, _log);
         let duration: number;
-        // Verify the cached file actually exists before using it
-        const cacheValid = cached.path && !fresh && existsSync(cached.path);
-        if (cacheValid) {
-          segPath = cached.path!;
-          duration = getManifestDuration(manifest, "segments", segPath, segKey) ?? probeDurationSec(segPath);
-          if (cached.env !== currentEnv) {
-            _log(`tts: fallback scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} using env=${cached.env}`);
-          } else if (verboseLogs) {
-            _log(`tts: cache scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} key=${safePrefix(segKey).slice(0, 8)}`);
-          }
+        let segPath: string | null = null;
+
+        if (dryRunMode) {
+          const wpm = (provider as { wpm?: number }).wpm ?? 165;
+          duration = estimateDurationSec(segSpec.text, wpm);
         } else {
-          // Log if cache entry exists but file is missing
-          if (cached.path && !fresh && !existsSync(cached.path)) {
-            _log(`tts: cache miss scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} (manifest entry exists but file missing)`);
-          }
-          _log(`tts: synth scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} -> ${segPath.split(sep).pop()}`);
-          try {
-            const seg = await provider.synthesize(
-              {
-                text: segSpec.text,
-                voice: voiceover.voice ?? null,
-                model: voiceover.model ?? null,
-                format: voiceover.format ?? "wav",
-                sampleRateHz,
-                extra: effectivePronunciationLocators ? { pronunciation_dictionary_locators: effectivePronunciationLocators } : {},
-              },
-              segPath,
-            );
-            recordUsageEvent({
-              kind: "tts",
-              unitType: "chars",
-              quantity: segSpec.text.length,
-              provider: providerName,
-              compositionId: composition.id,
-              sceneId: scene.id,
-              cueId: cue.id,
-              segmentIndex: segIndex,
-              model: resolvedModel,
-              voice: resolvedVoice,
-              env: currentEnv,
-            });
-            duration = seg.durationSec;
-            didSynthesize = true;
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            throw new CompileError(
-              `${message}\n\nLocation: ${dslPath}\n  Scene: ${scene.id}\n  Cue: ${cue.id}\n  Segment: ${segIndex + 1}`,
-            );
+          segmentKeyCounts[segKey] = (segmentKeyCounts[segKey] ?? 0) + 1;
+          const occurrence = segmentKeyCounts[segKey];
+          const ttsExt = providerName === "elevenlabs" ? ".mp3" : ".wav";
+          segPath = join(segmentsDir, `${scene.id}--${cue.id}--tts--${safePrefix(segKey)}--${occurrence}${ttsExt}`);
+
+          const cached = resolveCachedSegment(outDir, currentEnv, segKey, scene.id, cue.id, occurrence, ttsExt, _log);
+          // Verify the cached file actually exists before using it
+          const cacheValid = cached.path && !fresh && existsSync(cached.path);
+          if (cacheValid) {
+            segPath = cached.path!;
+            duration = getManifestDuration(manifest, "segments", segPath, segKey) ?? probeDurationSec(segPath);
+            if (cached.env !== currentEnv) {
+              _log(`tts: fallback scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} using env=${cached.env}`);
+            } else if (verboseLogs) {
+              _log(`tts: cache scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} key=${safePrefix(segKey).slice(0, 8)}`);
+            }
+          } else {
+            // Log if cache entry exists but file is missing
+            if (cached.path && !fresh && !existsSync(cached.path)) {
+              _log(`tts: cache miss scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} (manifest entry exists but file missing)`);
+            }
+            _log(`tts: synth scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} -> ${segPath.split(sep).pop()}`);
+            try {
+              const seg = await provider.synthesize(
+                {
+                  text: segSpec.text,
+                  voice: voiceover.voice ?? null,
+                  model: voiceover.model ?? null,
+                  format: voiceover.format ?? "wav",
+                  sampleRateHz,
+                  extra: effectivePronunciationLocators ? { pronunciation_dictionary_locators: effectivePronunciationLocators } : {},
+                },
+                segPath,
+              );
+              recordUsageEvent({
+                kind: "tts",
+                unitType: "chars",
+                quantity: segSpec.text.length,
+                provider: providerName,
+                compositionId: composition.id,
+                sceneId: scene.id,
+                cueId: cue.id,
+                segmentIndex: segIndex,
+                model: resolvedModel,
+                voice: resolvedVoice,
+                env: currentEnv,
+              });
+              duration = seg.durationSec;
+              didSynthesize = true;
+            } catch (err) {
+              const message = err instanceof Error ? err.message : String(err);
+              throw new CompileError(
+                `${message}\n\nLocation: ${dslPath}\n  Scene: ${scene.id}\n  Cue: ${cue.id}\n  Segment: ${segIndex + 1}`,
+              );
+            }
           }
         }
 
         const maxSeg = voiceover.maxTtsSegmentSeconds ?? 180;
-        if (duration > maxSeg) {
+        if (!dryRunMode && duration > maxSeg) {
+          if (!segPath) {
+            throw new CompileError(
+              `Missing segment path for TTS regeneration.\n\nLocation: ${dslPath}\n  Scene: ${scene.id}\n  Cue: ${cue.id}\n  Segment: ${segIndex + 1}`,
+            );
+          }
           _log(`tts: corrupt-duration scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} duration=${duration.toFixed(1)}s -> regen`);
           const seg = await provider.synthesize(
             {
@@ -391,34 +420,39 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
         }
 
         let trimEnd = 0;
-        if (trimEndCfg > 0) {
+        if (!dryRunMode && trimEndCfg > 0 && segPath) {
           const trailing = estimateTrailingSilenceSec(segPath, sampleRateHz, 80, 6.0);
           const safety = 0.08;
           trimEnd = trailing >= (trimEndCfg + safety) ? trimEndCfg : 0;
         }
         const effectiveDuration = trimEnd > 0 ? Math.max(0, duration - trimEnd) : duration;
-        setManifestEntry(manifest, "segments", segPath, segKey, effectiveDuration, {
-          provider: providerName,
-          sceneId: scene.id,
-          cueId: cue.id,
-          text: segSpec.text,
-          sample_rate_hz: sampleRateHz,
-          format: segPath.split(".").pop(),
-          rawDurationSec: duration,
-          trimEndSec: trimEnd,
-        });
+        if (segPath) {
+          setManifestEntry(manifest, "segments", segPath, segKey, effectiveDuration, {
+            provider: providerName,
+            sceneId: scene.id,
+            cueId: cue.id,
+            text: segSpec.text,
+            sample_rate_hz: sampleRateHz,
+            format: segPath.split(".").pop(),
+            rawDurationSec: duration,
+            trimEndSec: trimEnd,
+          });
+        }
 
         const segStart = now;
         const segEnd = segStart + effectiveDuration;
         now = segEnd;
 
-        const concatPath = trimEnd > 0
-          ? ensureTrimmed(segPath, envCacheDir, effectiveDuration, sampleRateHz, fresh)
-          : segPath;
-        segmentPathsForConcat.push(concatPath);
+        let concatPath: string | null = null;
+        if (segPath) {
+          concatPath = trimEnd > 0
+            ? ensureTrimmed(segPath, envCacheDir, effectiveDuration, sampleRateHz, fresh)
+            : segPath;
+          segmentPathsForConcat.push(concatPath);
+        }
 
-        if (publicSegmentsDir) {
-          const staged = join(publicSegmentsDir, segPath.split(sep).pop() ?? "segment.wav");
+        if (publicSegmentsDir && concatPath) {
+          const staged = join(publicSegmentsDir, concatPath.split(sep).pop() ?? "segment.wav");
           copyFileSync(concatPath, staged);
           narrationSegmentClips.push({
             id: staged.split(sep).pop()?.replace(/\.[^.]+$/, "") ?? "segment",
@@ -435,7 +469,7 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
           startSec: segStart,
           endSec: segEnd,
           text: segSpec.text,
-          segmentPath: segPath,
+          segmentPath: segPath ?? undefined,
           durationSec: effectiveDuration,
           rawDurationSec: duration,
           trimEndSec: trimEnd,
@@ -1024,7 +1058,8 @@ function toPublicPath(path: string): string {
   if (parts.length < 2) {
     return path;
   }
-  return parts[1];
+  const rel = parts[1].replace(/\\/g, "/");
+  return rel.startsWith("/") ? rel : `/${rel}`;
 }
 
 function resolveStart(start: AudioClipSpec["start"], cueIndex: Record<string, number>, sceneIndex: Record<string, number>): number {

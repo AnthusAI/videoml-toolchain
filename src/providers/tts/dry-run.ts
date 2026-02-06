@@ -1,7 +1,7 @@
 import { writeSilenceWav } from "../../audio/wav.js";
 import type { TTSProvider, TTSRequest, TTSSegment } from "./types.js";
 
-function estimateDurationSec(text: string, wpm: number): number {
+export function estimateDurationSec(text: string, wpm: number): number {
   const words = text.trim().split(/\s+/).filter(Boolean);
   if (!words.length) {
     return 0;

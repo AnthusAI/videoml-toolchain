@@ -198,6 +198,7 @@ export * from "./video.ts";
 export * from "./rbac.ts";
 export * from "./tenancy.ts";
 export * from "./access.ts";
+export * from "./dsl-to-script.ts";
 export * from "./org-scope.ts";
 export * from "./session.ts";
 export * from "./records.ts";
