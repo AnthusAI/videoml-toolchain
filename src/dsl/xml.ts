@@ -1,14 +1,21 @@
 import { DOMParser } from "@xmldom/xmldom";
 import { ParseError } from "../errors.js";
 import { applyVomPatches } from "./xml-patch.js";
+import { MissingTimeReferenceError, parseTimeValue, type TimeEvalContext } from "./time-expr.js";
 import type {
   AudioPlan,
+  AudioElementSpec,
   ComponentSpec,
   CueSpec,
   LayerSpec,
+  MarkSpec,
+  NarrationSpec,
   PauseSpec,
   SceneSpec,
   SemanticMarkup,
+  TransitionRef,
+  TransitionSpec,
+  TimelineItemSpec,
   TimeRange,
   VideoFileSpec,
   VisualStyles,
@@ -26,6 +33,12 @@ const BUILTIN_TAGS = new Set([
   "voiceover",
   "sequence",
   "stack",
+  "transition",
+  "mark",
+  "narration",
+  "audio",
+  "sfx",
+  "music",
 ]);
 
 type NodeLike = {
@@ -83,321 +96,6 @@ const toPascalCase = (value: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");
 
-class MissingTimeReferenceError extends Error {}
-
-type TimeEvalContext = {
-  fps: number;
-  getSceneStart: (id: string) => number | null;
-  getSceneEnd: (id: string) => number | null;
-  getCueStart: (id: string) => number | null;
-  getPrevStart: () => number | null;
-  getPrevEnd: () => number | null;
-  getNextStart: () => number | null;
-};
-
-type Token =
-  | { type: "number"; value: number; unit?: "f" | "s" | "ms" }
-  | { type: "identifier"; value: string }
-  | { type: "operator"; value: "+" | "-" | "*" | "/" }
-  | { type: "paren"; value: "(" | ")" }
-  | { type: "dot" }
-  | { type: "comma" };
-
-type AstNode =
-  | { kind: "number"; value: number; unit?: "f" | "s" | "ms" }
-  | { kind: "identifier"; value: string }
-  | { kind: "binary"; op: "+" | "-" | "*" | "/"; left: AstNode; right: AstNode }
-  | { kind: "unary"; op: "+" | "-"; value: AstNode }
-  | { kind: "call"; name: string; args: AstNode[] }
-  | { kind: "property"; target: AstNode; prop: string };
-
-const tokenizeTime = (input: string): Token[] => {
-  const tokens: Token[] = [];
-  let i = 0;
-  const pushNumber = (raw: string, unit?: "f" | "s" | "ms") => {
-    tokens.push({ type: "number", value: Number.parseFloat(raw), unit });
-  };
-  while (i < input.length) {
-    const ch = input[i];
-    if (ch === " " || ch === "\t" || ch === "\n") {
-      i += 1;
-      continue;
-    }
-    if (ch === "+" || ch === "-" || ch === "*" || ch === "/") {
-      tokens.push({ type: "operator", value: ch });
-      i += 1;
-      continue;
-    }
-    if (ch === "(" || ch === ")") {
-      tokens.push({ type: "paren", value: ch });
-      i += 1;
-      continue;
-    }
-    if (ch === ".") {
-      tokens.push({ type: "dot" });
-      i += 1;
-      continue;
-    }
-    if (ch === ",") {
-      tokens.push({ type: "comma" });
-      i += 1;
-      continue;
-    }
-    if (/\d/.test(ch) || (ch === "." && /\d/.test(input[i + 1] ?? ""))) {
-      let j = i + 1;
-      while (j < input.length && /[\d.]/.test(input[j] ?? "")) j += 1;
-      const raw = input.slice(i, j);
-      let unit: "f" | "s" | "ms" | undefined;
-      if (input.slice(j, j + 2) === "ms") {
-        unit = "ms";
-        j += 2;
-      } else if (input[j] === "f" || input[j] === "s") {
-        unit = input[j] as "f" | "s";
-        j += 1;
-      }
-      pushNumber(raw, unit);
-      i = j;
-      continue;
-    }
-    if (/[A-Za-z_]/.test(ch)) {
-      let j = i + 1;
-      while (j < input.length && /[A-Za-z0-9_-]/.test(input[j] ?? "")) j += 1;
-      tokens.push({ type: "identifier", value: input.slice(i, j) });
-      i = j;
-      continue;
-    }
-    throw new ParseError(`Unexpected character "${ch}" in time expression.`);
-  }
-  return tokens;
-};
-
-const parseTimeExpression = (input: string): AstNode => {
-  const tokens = tokenizeTime(input);
-  let idx = 0;
-  const peek = () => tokens[idx];
-  const consume = () => tokens[idx++];
-
-  const parsePrimary = (): AstNode => {
-    const token = consume();
-    if (!token) throw new ParseError("Unexpected end of time expression.");
-    if (token.type === "number") {
-      return { kind: "number", value: token.value, unit: token.unit };
-    }
-    if (token.type === "identifier") {
-      let node: AstNode = { kind: "identifier", value: token.value };
-      const next = peek();
-      if (next?.type === "paren" && next.value === "(") {
-        consume();
-        const args: AstNode[] = [];
-        const afterOpen = peek();
-        if (!(afterOpen?.type === "paren" && afterOpen.value === ")")) {
-          while (true) {
-            args.push(parseExpression());
-            const comma = peek();
-            if (comma?.type === "comma") {
-              consume();
-              continue;
-            }
-            break;
-          }
-        }
-        const closing = consume();
-        if (!closing || closing.type !== "paren" || closing.value !== ")") {
-          throw new ParseError("Expected closing ')' in time expression.");
-        }
-        node = { kind: "call", name: token.value, args };
-      }
-      while (true) {
-        const dot = peek();
-        if (!dot || dot.type !== "dot") {
-          break;
-        }
-        consume();
-        const prop = consume();
-        if (!prop || prop.type !== "identifier") {
-          throw new ParseError("Expected property name after '.'.");
-        }
-        node = { kind: "property", target: node, prop: prop.value };
-      }
-      return node;
-    }
-    if (token.type === "paren" && token.value === "(") {
-      const expr = parseExpression();
-      const closing = consume();
-      if (!closing || closing.type !== "paren" || closing.value !== ")") {
-        throw new ParseError("Expected closing ')' in time expression.");
-      }
-      return expr;
-    }
-    throw new ParseError("Invalid time expression.");
-  };
-
-  const parseUnary = (): AstNode => {
-    const token = peek();
-    if (token?.type === "operator" && (token.value === "+" || token.value === "-")) {
-      consume();
-      return { kind: "unary", op: token.value, value: parseUnary() };
-    }
-    return parsePrimary();
-  };
-
-  const parseTerm = (): AstNode => {
-    let node = parseUnary();
-    while (true) {
-      const op = peek();
-      if (!op || op.type !== "operator" || (op.value !== "*" && op.value !== "/")) {
-        break;
-      }
-      consume();
-      node = { kind: "binary", op: op.value, left: node, right: parseUnary() };
-    }
-    return node;
-  };
-
-  const parseExpression = (): AstNode => {
-    let node = parseTerm();
-    while (true) {
-      const op = peek();
-      if (!op || op.type !== "operator" || (op.value !== "+" && op.value !== "-")) {
-        break;
-      }
-      consume();
-      node = { kind: "binary", op: op.value, left: node, right: parseTerm() };
-    }
-    return node;
-  };
-
-  const expr = parseExpression();
-  if (idx < tokens.length) {
-    throw new ParseError("Unexpected token in time expression.");
-  }
-  return expr;
-};
-
-const evalTimeAst = (node: AstNode, ctx: TimeEvalContext): number => {
-  switch (node.kind) {
-    case "number": {
-      if (!node.unit) return node.value;
-      if (node.unit === "f") return node.value / ctx.fps;
-      if (node.unit === "ms") return node.value / 1000;
-      return node.value;
-    }
-    case "identifier": {
-      if (node.value === "timeline") {
-        throw new ParseError("timeline requires a property (e.g. timeline.start).");
-      }
-      throw new ParseError(`Unknown identifier "${node.value}" in time expression.`);
-    }
-    case "unary": {
-      const val = evalTimeAst(node.value, ctx);
-      return node.op === "-" ? -val : val;
-    }
-    case "binary": {
-      const left = evalTimeAst(node.left, ctx);
-      const right = evalTimeAst(node.right, ctx);
-      switch (node.op) {
-        case "+":
-          return left + right;
-        case "-":
-          return left - right;
-        case "*":
-          return left * right;
-        case "/":
-          return left / right;
-      }
-    }
-    case "call": {
-      const name = node.name;
-      if (name === "min" || name === "max") {
-        if (node.args.length < 2) {
-          throw new ParseError(`${name} requires at least 2 arguments.`);
-        }
-        const values = node.args.map((arg) => evalTimeAst(arg, ctx));
-        return name === "min" ? Math.min(...values) : Math.max(...values);
-      }
-      if (name === "clamp") {
-        if (node.args.length !== 3) {
-          throw new ParseError("clamp requires 3 arguments.");
-        }
-        const value = evalTimeAst(node.args[0], ctx);
-        const min = evalTimeAst(node.args[1], ctx);
-        const max = evalTimeAst(node.args[2], ctx);
-        return Math.min(max, Math.max(min, value));
-      }
-      if (name === "snap") {
-        if (node.args.length !== 2) {
-          throw new ParseError("snap requires 2 arguments.");
-        }
-        const value = evalTimeAst(node.args[0], ctx);
-        const grid = evalTimeAst(node.args[1], ctx);
-        return grid === 0 ? value : Math.round(value / grid) * grid;
-      }
-      if (name === "scene") {
-        const arg = node.args[0];
-        if (!arg || arg.kind !== "identifier") {
-          throw new ParseError("scene() requires an identifier argument.");
-        }
-        return ctx.getSceneStart(arg.value) ?? (() => { throw new MissingTimeReferenceError(`scene(${arg.value})`); })();
-      }
-      if (name === "cue") {
-        const arg = node.args[0];
-        if (!arg || arg.kind !== "identifier") {
-          throw new ParseError("cue() requires an identifier argument.");
-        }
-        const value = ctx.getCueStart(arg.value);
-        if (value == null) throw new MissingTimeReferenceError(`cue(${arg.value})`);
-        return value;
-      }
-      throw new ParseError(`Unknown function "${name}".`);
-    }
-    case "property": {
-      if (node.target.kind === "identifier" && node.target.value === "prev") {
-        if (node.prop === "start") {
-          const value = ctx.getPrevStart();
-          if (value == null) throw new MissingTimeReferenceError("prev.start");
-          return value;
-        }
-        if (node.prop === "end") {
-          const value = ctx.getPrevEnd();
-          if (value == null) throw new MissingTimeReferenceError("prev.end");
-          return value;
-        }
-      }
-      if (node.target.kind === "identifier" && node.target.value === "next") {
-        if (node.prop === "start") {
-          const value = ctx.getNextStart();
-          if (value == null) throw new MissingTimeReferenceError("next.start");
-          return value;
-        }
-      }
-      if (node.target.kind === "identifier" && node.target.value === "timeline" && node.prop === "start") {
-        return 0;
-      }
-      if (node.target.kind === "call" && node.target.name === "scene") {
-        const arg = node.target.args[0];
-        if (!arg || arg.kind !== "identifier") {
-          throw new ParseError("scene() requires an identifier argument.");
-        }
-        if (node.prop === "start") {
-          const value = ctx.getSceneStart(arg.value);
-          if (value == null) throw new MissingTimeReferenceError(`scene(${arg.value}).start`);
-          return value;
-        }
-        if (node.prop === "end") {
-          const value = ctx.getSceneEnd(arg.value);
-          if (value == null) throw new MissingTimeReferenceError(`scene(${arg.value}).end`);
-          return value;
-        }
-      }
-      throw new ParseError(`Unsupported property access ".${node.prop}".`);
-    }
-  }
-};
-
-const parseTimeValue = (value: string, ctx: TimeEvalContext): number => {
-  const expr = parseTimeExpression(value.trim());
-  return evalTimeAst(expr, ctx);
-};
 
 const parseAttributes = (element: ElementLike) => {
   const attrs: Record<string, string> = {};
@@ -454,13 +152,29 @@ const parseTiming = (attrs: Record<string, string>, ctx: TimeEvalContext) => {
   };
 };
 
-const parseTimeRange = (attrs: Record<string, string>, ctx: TimeEvalContext, label: string): TimeRange | undefined => {
+const parseTimeRange = (
+  attrs: Record<string, string>,
+  ctx: TimeEvalContext,
+  label: string,
+  allowRelativeStart = false,
+): TimeRange | undefined => {
   const startRaw = attrs.start;
   const endRaw = attrs.end;
   const durationRaw = attrs.duration;
   if (!startRaw && !endRaw && !durationRaw) return undefined;
-  if (!startRaw && (endRaw || durationRaw)) {
-    throw new ParseError(`${label} timing requires start when end or duration is provided.`);
+  if (!startRaw && endRaw) {
+    throw new ParseError(`${label} timing requires start when end is provided.`);
+  }
+  if (!startRaw && durationRaw && allowRelativeStart) {
+    const prevEnd = ctx.getPrevEnd();
+    const duration = parseTimeValue(durationRaw, ctx);
+    if (prevEnd == null) {
+      return { start: 0, end: duration, startIsRelative: true };
+    }
+    return { start: prevEnd, end: prevEnd + duration };
+  }
+  if (!startRaw && durationRaw) {
+    throw new ParseError(`${label} timing requires start when duration is provided.`);
   }
   const start = startRaw ? parseTimeValue(startRaw, ctx) : undefined;
   const endExplicit = endRaw ? parseTimeValue(endRaw, ctx) : undefined;
@@ -475,6 +189,28 @@ const parseTimeRange = (attrs: Record<string, string>, ctx: TimeEvalContext, lab
     return { start };
   }
   return undefined;
+};
+
+const parseTransitionRef = (
+  attrs: Record<string, string>,
+  ctx: TimeEvalContext,
+  effectKey: string,
+  prefix: string,
+): TransitionRef | undefined => {
+  const effect = attrs[effectKey];
+  if (!effect) return undefined;
+  const durationKey = `${prefix}-duration`;
+  const easeKey = `${prefix}-ease`;
+  const propsKey = `${prefix}-props`;
+  const durationSeconds = attrs[durationKey] ? parseTimeValue(attrs[durationKey], ctx) : undefined;
+  const ease = attrs[easeKey];
+  const props = attrs[propsKey] ? parseJson(attrs[propsKey], `${prefix} props`) : undefined;
+  return {
+    effect,
+    durationSeconds,
+    ease,
+    props,
+  };
 };
 
 const parsePause = (attrs: Record<string, string>, ctx: TimeEvalContext): PauseSpec => {
@@ -497,6 +233,65 @@ const parsePause = (attrs: Record<string, string>, ctx: TimeEvalContext): PauseS
     return pause;
   }
   throw new ParseError("pause requires seconds or mean+std attributes.");
+};
+
+const parseAudioElement = (
+  element: ElementLike,
+  ctx: TimeEvalContext,
+  index: number,
+  defaultKind?: AudioElementSpec["kind"],
+): AudioElementSpec => {
+  const attrs = parseAttributes(element);
+  const kind = (attrs.kind as AudioElementSpec["kind"] | undefined) ?? defaultKind;
+  if (!kind) {
+    throw new ParseError("audio tag requires kind attribute.");
+  }
+  const id = attrs.id ?? `${kind}-${index}`;
+  let time = parseTimeRange(attrs, ctx, `audio "${id}"`);
+  if (!time && attrs.duration && !attrs.start && !attrs.end) {
+    const duration = parseTimeValue(attrs.duration, ctx);
+    time = { start: 0, end: duration };
+  }
+  const volume = attrs.volume ? parseNumber(attrs.volume) ?? undefined : undefined;
+  const playThrough = attrs["play-through"] ? parseBoolean(attrs["play-through"]) ?? undefined : undefined;
+  const sourceId = attrs["source-id"] ?? undefined;
+  const durationSeconds = attrs["clip-duration"] ? parseTimeValue(attrs["clip-duration"], ctx) : undefined;
+  const variants = attrs.variants ? parseNumber(attrs.variants) ?? undefined : undefined;
+  const pick = attrs.pick ? parseNumber(attrs.pick) ?? undefined : undefined;
+  const modelId = attrs["model-id"] ?? undefined;
+  const forceInstrumental = attrs["force-instrumental"]
+    ? parseBoolean(attrs["force-instrumental"]) ?? undefined
+    : undefined;
+  const fadeToVolume = attrs["fade-to"] ? parseNumber(attrs["fade-to"]) ?? undefined : undefined;
+  const fadeToAfter = attrs["fade-to-after"] ? parseTimeValue(attrs["fade-to-after"], ctx) : undefined;
+  const fadeToDuration = attrs["fade-to-duration"] ? parseTimeValue(attrs["fade-to-duration"], ctx) : undefined;
+  const fadeOutVolume = attrs["fade-out"] ? parseNumber(attrs["fade-out"]) ?? undefined : undefined;
+  const fadeOutBefore = attrs["fade-out-before"] ? parseTimeValue(attrs["fade-out-before"], ctx) : undefined;
+  const fadeOutDuration = attrs["fade-out-duration"] ? parseTimeValue(attrs["fade-out-duration"], ctx) : undefined;
+
+  return {
+    id,
+    kind,
+    time,
+    volume,
+    playThrough,
+    sourceId,
+    src: attrs.src ?? undefined,
+    prompt: attrs.prompt ?? undefined,
+    durationSeconds,
+    variants: variants == null ? undefined : Math.trunc(variants),
+    pick: pick == null ? undefined : Math.trunc(pick),
+    modelId,
+    forceInstrumental,
+    fadeTo:
+      fadeToVolume != null && fadeToAfter != null
+        ? { volume: fadeToVolume, afterSeconds: fadeToAfter, fadeDurationSeconds: fadeToDuration }
+        : undefined,
+    fadeOut:
+      fadeOutVolume != null && fadeOutBefore != null
+        ? { volume: fadeOutVolume, beforeEndSeconds: fadeOutBefore, fadeDurationSeconds: fadeOutDuration }
+        : undefined,
+  };
 };
 
 const parseVoiceSegments = (cueEl: ElementLike, ctx: TimeEvalContext): VoiceSegmentSpec[] => {
@@ -766,14 +561,21 @@ const parseScene = (sceneEl: ElementLike, ctx: TimeEvalContext): SceneSpec => {
     throw new ParseError("scene tag requires id attribute.");
   }
   const title = attrs.title ?? id;
-  const time = parseTimeRange(attrs, ctx, `scene "${id}"`);
+  const time = parseTimeRange(attrs, ctx, `scene "${id}"`, true);
   const styles = parseStylesOrMarkup(attrs.styles, "styles attribute") as VisualStyles | undefined;
   const markup = parseStylesOrMarkup(attrs.markup, "markup attribute") as SemanticMarkup | undefined;
+  const enter = parseTransitionRef(attrs, ctx, "enter", "enter");
+  const exit = parseTransitionRef(attrs, ctx, "exit", "exit");
+  const transitionToNext =
+    parseTransitionRef(attrs, ctx, "transition-to-next", "transition") ??
+    parseTransitionRef(attrs, ctx, "transition", "transition");
 
   const items: Array<CueSpec | PauseSpec> = [];
   let cueCount = 0;
   const layers: LayerSpec[] = [];
   const components: ComponentSpec[] = [];
+  const audio: AudioElementSpec[] = [];
+  let audioIndex = 0;
   let componentIndex = 0;
 
   for (const child of getChildElements(sceneEl)) {
@@ -788,6 +590,21 @@ const parseScene = (sceneEl: ElementLike, ctx: TimeEvalContext): SceneSpec => {
     }
     if (child.tagName === "layer") {
       layers.push(parseLayer(child, ctx));
+      continue;
+    }
+    if (child.tagName === "audio") {
+      audio.push(parseAudioElement(child, ctx, audioIndex));
+      audioIndex += 1;
+      continue;
+    }
+    if (child.tagName === "sfx") {
+      audio.push(parseAudioElement(child, ctx, audioIndex, "sfx"));
+      audioIndex += 1;
+      continue;
+    }
+    if (child.tagName === "music") {
+      audio.push(parseAudioElement(child, ctx, audioIndex, "music"));
+      audioIndex += 1;
       continue;
     }
     if (child.tagName === "sequence" || child.tagName === "stack") {
@@ -824,6 +641,148 @@ const parseScene = (sceneEl: ElementLike, ctx: TimeEvalContext): SceneSpec => {
     markup,
     layers: layers.length > 0 ? layers : undefined,
     components: components.length > 0 ? components : undefined,
+    enter,
+    exit,
+    transitionToNext,
+    audio: audio.length > 0 ? audio : undefined,
+  };
+};
+
+const parseNarration = (narrationEl: ElementLike, ctx: TimeEvalContext): NarrationSpec => {
+  const attrs = parseAttributes(narrationEl);
+  const id = attrs.id;
+  if (!id) {
+    throw new ParseError("narration tag requires id attribute.");
+  }
+  const time = parseTimeRange(attrs, ctx, `narration "${id}"`, true);
+  const items: Array<CueSpec | PauseSpec> = [];
+
+  for (const child of getChildElements(narrationEl)) {
+    if (child.tagName === "cue") {
+      items.push(parseCue(child, ctx));
+      continue;
+    }
+    if (child.tagName === "pause") {
+      items.push(parsePause(parseAttributes(child), ctx));
+      continue;
+    }
+  }
+
+  return {
+    kind: "narration",
+    id,
+    time,
+    items,
+  };
+};
+
+const parseTransition = (transitionEl: ElementLike, ctx: TimeEvalContext): TransitionSpec => {
+  const attrs = parseAttributes(transitionEl);
+  const id = attrs.id;
+  if (!id) {
+    throw new ParseError("transition tag requires id attribute.");
+  }
+  const title = attrs.title ?? undefined;
+  let time: TimeRange | undefined;
+  let durationSeconds: number | undefined;
+  if (attrs.duration && !attrs.start && !attrs.end) {
+    durationSeconds = parseTimeValue(attrs.duration, ctx);
+  } else {
+    time = parseTimeRange(attrs, ctx, `transition \"${id}\"`);
+  }
+  const effect = attrs.effect ?? attrs.type ?? undefined;
+  const ease = attrs.ease ?? undefined;
+  const props = attrs.props ? parseJson(attrs.props, "transition props") : undefined;
+  const mode = (attrs.mode as TransitionSpec["mode"]) ?? undefined;
+  const overflow = (attrs.overflow as TransitionSpec["overflow"]) ?? undefined;
+  const overflowAudio = (attrs["overflow-audio"] as TransitionSpec["overflowAudio"]) ?? undefined;
+  const styles = parseStylesOrMarkup(attrs.styles, "styles attribute") as VisualStyles | undefined;
+  const markup = parseStylesOrMarkup(attrs.markup, "markup attribute") as SemanticMarkup | undefined;
+
+  const layers: LayerSpec[] = [];
+  const components: ComponentSpec[] = [];
+  const audio: AudioElementSpec[] = [];
+  let componentIndex = 0;
+  let audioIndex = 0;
+
+  for (const child of getChildElements(transitionEl)) {
+    if (child.tagName === "layer") {
+      layers.push(parseLayer(child, ctx));
+      continue;
+    }
+    if (child.tagName === "audio") {
+      audio.push(parseAudioElement(child, ctx, audioIndex));
+      audioIndex += 1;
+      continue;
+    }
+    if (child.tagName === "sfx") {
+      audio.push(parseAudioElement(child, ctx, audioIndex, "sfx"));
+      audioIndex += 1;
+      continue;
+    }
+    if (child.tagName === "music") {
+      audio.push(parseAudioElement(child, ctx, audioIndex, "music"));
+      audioIndex += 1;
+      continue;
+    }
+    if (child.tagName === "sequence" || child.tagName === "stack") {
+      const containerAttrs = parseAttributes(child);
+      const containerTiming = parseContainerTiming(containerAttrs, ctx);
+      const containerStart = containerTiming.startSec ?? 0;
+      const parsed = parseContainerChildren(
+        child,
+        ctx,
+        componentIndex,
+        containerStart,
+        child.tagName as "sequence" | "stack",
+        undefined,
+        undefined,
+      );
+      components.push(...parsed.components);
+      componentIndex = parsed.componentIndex;
+      continue;
+    }
+    if (!BUILTIN_TAGS.has(child.tagName)) {
+      components.push(parseComponent(child, ctx, componentIndex));
+      componentIndex += 1;
+    }
+  }
+
+  return {
+    kind: "transition",
+    id,
+    title,
+    time,
+    effect,
+    ease,
+    props,
+    durationSeconds,
+    mode,
+    overflow,
+    overflowAudio,
+    styles,
+    markup,
+    layers: layers.length > 0 ? layers : undefined,
+    components: components.length > 0 ? components : undefined,
+    audio: audio.length > 0 ? audio : undefined,
+  };
+};
+
+const parseMark = (markEl: ElementLike, ctx: TimeEvalContext): MarkSpec => {
+  const attrs = parseAttributes(markEl);
+  const id = attrs.id;
+  if (!id) {
+    throw new ParseError("mark tag requires id attribute.");
+  }
+  const atValue = attrs.at ?? attrs.start;
+  if (!atValue) {
+    throw new ParseError(`mark \"${id}\" requires at attribute.`);
+  }
+  const at = parseTimeValue(atValue, ctx);
+  return {
+    kind: "mark",
+    id,
+    at,
   };
 };
 
@@ -831,8 +790,10 @@ export const loadVideoFileFromXml = (xml: string): VideoFileSpec => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, "text/xml");
   const root = doc.documentElement;
-  if (!root || root.tagName !== "videoml") {
-    throw new ParseError("XML root must be <videoml>.");
+  const rootTag = root?.tagName ?? "";
+  const allowedRoots = new Set(["videoml", "video-ml", "vml"]);
+  if (!allowedRoots.has(rootTag)) {
+    throw new ParseError("XML root must be <vml>, <videoml>, or <video-ml>.");
   }
 
   const attrs = parseAttributes(asElementLike(root));
@@ -849,6 +810,7 @@ export const loadVideoFileFromXml = (xml: string): VideoFileSpec => {
     getSceneStart: () => null,
     getSceneEnd: () => null,
     getCueStart: () => null,
+    getMarkStart: () => null,
     getPrevStart: () => null,
     getPrevEnd: () => null,
     getNextStart: () => null,
@@ -856,49 +818,75 @@ export const loadVideoFileFromXml = (xml: string): VideoFileSpec => {
   const duration = attrs.duration ? parseTimeValue(attrs.duration, baseCtx) : undefined;
   const poster = attrs.poster ? parseTimeValue(attrs.poster, baseCtx) : undefined;
 
-  const scenes: SceneSpec[] = [];
+  const timeline: TimelineItemSpec[] = [];
   let voiceover: VideoFileSpec["compositions"][number]["voiceover"] | undefined;
   const sceneStartIndex = new Map<string, number>();
   const sceneEndIndex = new Map<string, number>();
-  const sceneElements = getChildElements(asElementLike(root)).filter((child) => child.tagName === "scene");
+  const markStartIndex = new Map<string, number>();
+  const timelineElements = getChildElements(asElementLike(root)).filter((child) =>
+    child.tagName === "scene" ||
+    child.tagName === "transition" ||
+    child.tagName === "mark" ||
+    child.tagName === "narration",
+  );
   const cueStartIndex = new Map<string, number>();
+  const itemStarts: Array<number | null> = [];
+  const itemEnds: Array<number | null> = [];
 
-  const pending = new Set(sceneElements.keys());
+  const pending = new Set(timelineElements.keys());
   let passes = 0;
   while (pending.size > 0) {
     let progressed = false;
     const snapshot = Array.from(pending);
     for (const index of snapshot) {
-      const child = sceneElements[index];
-      const prevScene = index > 0 ? scenes[index - 1] : null;
-      const nextElement = index + 1 < sceneElements.length ? sceneElements[index + 1] : null;
+      const child = timelineElements[index];
       const ctx: TimeEvalContext = {
         fps,
         getSceneStart: (sceneId) => sceneStartIndex.get(sceneId) ?? null,
         getSceneEnd: (sceneId) => sceneEndIndex.get(sceneId) ?? null,
         getCueStart: (cueId) => cueStartIndex.get(cueId) ?? null,
-        getPrevStart: () => (prevScene ? sceneStartIndex.get(prevScene.id) ?? null : null),
-        getPrevEnd: () => (prevScene ? sceneEndIndex.get(prevScene.id) ?? null : null),
+        getMarkStart: (markId) => markStartIndex.get(markId) ?? null,
+        getPrevStart: () => (index === 0 ? 0 : itemStarts[index - 1] ?? null),
+        getPrevEnd: () => (index === 0 ? 0 : itemEnds[index - 1] ?? null),
         getNextStart: () => {
-          if (!nextElement) return null;
-          const nextId = parseAttributes(nextElement).id;
-          return nextId ? sceneStartIndex.get(nextId) ?? null : null;
+          if (index + 1 >= timelineElements.length) return null;
+          return itemStarts[index + 1] ?? null;
         },
       };
       try {
-        const scene = parseScene(child, ctx);
-        scenes[index] = scene;
-        if (scene.time?.start != null) {
-          sceneStartIndex.set(scene.id, scene.time.start);
-        }
-        if (scene.time?.end != null) {
-          sceneEndIndex.set(scene.id, scene.time.end);
-        }
-        for (const item of scene.items) {
-          if ("kind" in item && item.kind === "cue" && item.time?.start != null) {
-            cueStartIndex.set(item.id, item.time.start);
+        let item: TimelineItemSpec;
+        if (child.tagName === "scene") {
+          item = parseScene(child, ctx);
+          if (item.time?.start != null) {
+            sceneStartIndex.set(item.id, item.time.start);
           }
+          if (item.time?.end != null) {
+            sceneEndIndex.set(item.id, item.time.end);
+          }
+          for (const sceneItem of item.items) {
+            if ("kind" in sceneItem && sceneItem.kind === "cue" && sceneItem.time?.start != null) {
+              cueStartIndex.set(sceneItem.id, sceneItem.time.start);
+            }
+          }
+          if (item.time?.start != null) itemStarts[index] = item.time.start;
+          if (item.time?.end != null) itemEnds[index] = item.time.end;
+        } else if (child.tagName === "transition") {
+          item = parseTransition(child, ctx);
+          if (item.time?.start != null) itemStarts[index] = item.time.start;
+          if (item.time?.end != null) itemEnds[index] = item.time.end;
+        } else if (child.tagName === "narration") {
+          item = parseNarration(child, ctx);
+          if (item.time?.start != null) itemStarts[index] = item.time.start;
+          if (item.time?.end != null) itemEnds[index] = item.time.end;
+        } else if (child.tagName === "mark") {
+          item = parseMark(child, ctx);
+          markStartIndex.set(item.id, item.at);
+          itemStarts[index] = item.at;
+          itemEnds[index] = item.at;
+        } else {
+          throw new ParseError(`Unsupported timeline element <${child.tagName}>.`);
         }
+        timeline[index] = item;
         pending.delete(index);
         progressed = true;
       } catch (err) {
@@ -910,11 +898,11 @@ export const loadVideoFileFromXml = (xml: string): VideoFileSpec => {
     passes += 1;
     if (!progressed) {
       const unresolved = Array.from(pending)
-        .map((idx) => parseAttributes(sceneElements[idx]).id ?? `scene#${idx}`)
+        .map((idx) => parseAttributes(timelineElements[idx]).id ?? `item#${idx}`)
         .join(", ");
-      throw new ParseError(`Unresolved time references for scenes: ${unresolved}`);
+      throw new ParseError(`Unresolved time references for timeline items: ${unresolved}`);
     }
-    if (passes > sceneElements.length + 2) {
+    if (passes > timelineElements.length + 2) {
       throw new ParseError("Time resolution did not converge.");
     }
   }
@@ -939,8 +927,9 @@ export const loadVideoFileFromXml = (xml: string): VideoFileSpec => {
     }
   }
 
+  const scenes = timeline.filter((item): item is SceneSpec => !("kind" in item));
   if (scenes.length === 0) {
-    throw new ParseError("videoml requires at least one scene.");
+    throw new ParseError("vml requires at least one scene.");
   }
 
   const cueIds = new Set<string>();
@@ -952,6 +941,28 @@ export const loadVideoFileFromXml = (xml: string): VideoFileSpec => {
         }
         cueIds.add(item.id);
       }
+    }
+  }
+  for (const item of timeline) {
+    if ("kind" in item && item.kind === "narration") {
+      for (const cueItem of item.items) {
+        if ("kind" in cueItem && cueItem.kind === "cue") {
+          if (cueIds.has(cueItem.id)) {
+            throw new ParseError(`Duplicate cue id across scenes/narration: "${cueItem.id}".`);
+          }
+          cueIds.add(cueItem.id);
+        }
+      }
+    }
+  }
+
+  const markIds = new Set<string>();
+  for (const item of timeline) {
+    if ("kind" in item && item.kind === "mark") {
+      if (markIds.has(item.id)) {
+        throw new ParseError(`Duplicate mark id: "${item.id}".`);
+      }
+      markIds.add(item.id);
     }
   }
 
@@ -966,7 +977,7 @@ export const loadVideoFileFromXml = (xml: string): VideoFileSpec => {
     },
     posterTime: poster ?? undefined,
     voiceover,
-    scenes,
+    timeline,
   };
 
   const videoFile: VideoFileSpec = {

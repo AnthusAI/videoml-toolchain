@@ -1,5 +1,6 @@
 import React from 'react';
 import { LottieBase, type LottieBaseProps } from '../../engines/LottieBase.js';
+import chatCorregido from './lottie/chat-corregido.json';
 
 const DEFAULT_BADGE = {
   v: '5.7.4',
@@ -120,7 +121,7 @@ export type LottieBadgeProps = LottieBaseProps & {
 
 export class LottieBadgeComponent extends LottieBase<LottieBadgeProps> {
   static defaultProps = {
-    animationData: DEFAULT_BADGE,
+    animationData: chatCorregido,
   };
 
   render() {

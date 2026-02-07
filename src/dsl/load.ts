@@ -57,5 +57,5 @@ function isCompositionSpec(value: unknown): value is CompositionSpec {
     return false;
   }
   const obj = value as CompositionSpec;
-  return typeof obj.id === "string" && Array.isArray(obj.scenes);
+  return typeof obj.id === "string" && Array.isArray(obj.timeline);
 }

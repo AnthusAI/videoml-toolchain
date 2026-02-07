@@ -44,11 +44,15 @@ export function dslToScriptData(
   const width = composition.meta?.width ?? 1280;
   const height = composition.meta?.height ?? 720;
 
+  const legacyScenes = (composition as { scenes?: SceneSpec[] }).scenes ?? [];
+  const timeline = composition.timeline ?? legacyScenes;
+  const sceneItems = timeline.filter((item): item is SceneSpec => !("kind" in item));
+
   let currentTime = 0;
   const scenes: ScriptScene[] = [];
 
-  for (const sceneSpec of composition.scenes) {
-    const scriptScene = transformScene(sceneSpec, currentTime, totalDuration, strategy, composition.scenes.length);
+  for (const sceneSpec of sceneItems) {
+    const scriptScene = transformScene(sceneSpec, currentTime, totalDuration, strategy, sceneItems.length);
     scenes.push(scriptScene);
     currentTime = scriptScene.endSec ?? currentTime;
   }

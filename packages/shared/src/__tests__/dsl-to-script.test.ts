@@ -7,7 +7,7 @@ describe('dslToScriptData', () => {
     const composition: CompositionSpec = {
       id: 'test-composition',
       title: 'Test Composition',
-      scenes: [
+      timeline: [
         {
           id: 'scene-1',
           title: 'Scene 1',
@@ -95,7 +95,7 @@ describe('dslToScriptData', () => {
     const composition: CompositionSpec = {
       id: 'test-composition',
       title: 'Test Composition',
-      scenes: [
+      timeline: [
         {
           id: 'scene-1',
           title: 'Scene 1',

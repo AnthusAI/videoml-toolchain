@@ -13,6 +13,13 @@ export type TitleProps = {
   textColor?: string;
   textAlign?: "left" | "center" | "right";
   position?: { x?: number | string; y?: number | string };
+  xFrom?: number;
+  xTo?: number;
+  yFrom?: number;
+  yTo?: number;
+  rotateDeg?: number;
+  rotate?: number;
+  centerY?: boolean;
   textEffect?: TextEffectConfig;
   // Injected by renderer
   scene?: ScriptScene;
@@ -21,6 +28,7 @@ export type TitleProps = {
   videoWidth?: number;
   videoHeight?: number;
   styles?: CascadedStyles;
+  transitionProgress?: number;
 };
 
 export function TitleComponent(props: TitleProps) {
@@ -32,6 +40,13 @@ export function TitleComponent(props: TitleProps) {
     color,
     textAlign,
     position = { x: 48, y: 48 },
+    xFrom,
+    xTo,
+    yFrom,
+    yTo,
+    rotateDeg,
+    rotate,
+    centerY,
     textEffect,
     textColor,
     scene,
@@ -40,6 +55,7 @@ export function TitleComponent(props: TitleProps) {
     videoWidth,
     videoHeight,
     styles = {} as CascadedStyles,
+    transitionProgress,
   } = props;
 
   // Resolve text from binding or explicit prop
@@ -48,25 +64,45 @@ export function TitleComponent(props: TitleProps) {
   if (!displayText) return null;
 
   const resolvedTextAlign = textAlign ?? styles.textAlign ?? "left";
+  const hasTransition = typeof transitionProgress === "number";
+  const resolvedX =
+    hasTransition && xFrom != null && xTo != null ? xFrom + (xTo - xFrom) * transitionProgress : position.x;
+  const resolvedY =
+    hasTransition && yFrom != null && yTo != null ? yFrom + (yTo - yFrom) * transitionProgress : position.y;
+  const resolvedRotate = rotateDeg ?? rotate;
 
   // For center-aligned text, center the container and make content centered within
   const containerStyle: React.CSSProperties = {
     position: "absolute",
-    top: position.y,
+    top: resolvedY,
     opacity: styles._computedOpacity ?? 1,
   };
 
+  const transforms: string[] = [];
+
   if (resolvedTextAlign === "center") {
-    // For centered titles, use left:50% and translateX(-50%) on the span itself
-    containerStyle.left = "50%";
+    // For centered titles, use left:50% and translateX(-50%) on the container
+    containerStyle.left = resolvedX ?? "50%";
     containerStyle.display = "inline-block";
-    if (textEffect) {
-      containerStyle.transform = "translateX(-50%)";
-    }
+    containerStyle.textAlign = "center";
+    transforms.push("translateX(-50%)");
   } else {
     // For left-aligned titles, position at the specified x
-    containerStyle.left = position.x;
+    containerStyle.left = resolvedX;
     containerStyle.textAlign = resolvedTextAlign;
+  }
+
+  if (centerY) {
+    transforms.push("translateY(-50%)");
+  }
+
+  if (typeof resolvedRotate === "number" && !Number.isNaN(resolvedRotate)) {
+    transforms.push(`rotate(${resolvedRotate}deg)`);
+    containerStyle.transformOrigin = "center center";
+  }
+
+  if (transforms.length > 0) {
+    containerStyle.transform = transforms.join(" ");
   }
 
   if (textEffect) {
@@ -108,11 +144,8 @@ export function TitleComponent(props: TitleProps) {
     backgroundColor: color ?? styles.color ?? "#c7007e",
     color: "#ffffff",
     lineHeight: 1,
+    whiteSpace: "nowrap",
   };
-
-  if (resolvedTextAlign === "center") {
-    spanStyle.transform = "translateX(-50%)";
-  }
 
   return (
     <div style={containerStyle}>

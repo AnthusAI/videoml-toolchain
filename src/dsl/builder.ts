@@ -122,7 +122,7 @@ class CompositionBuilder {
   private _posterTime?: number | null;
   private _voiceover?: VoiceoverConfig;
   private _audioProviders?: { sfx?: string | null; music?: string | null };
-  private scenes: SceneSpec[] = [];
+  private timeline: SceneSpec[] = [];
   private audioPlan: AudioPlan = { tracks: [] };
 
   constructor(name: string, opts: Partial<CompositionSpec>) {
@@ -180,7 +180,7 @@ class CompositionBuilder {
     const builder = new SceneBuilder(name, opts, this.audioPlan);
     fn(builder);
     const spec = builder.toSpec();
-    this.scenes.push(spec);
+    this.timeline.push(spec);
     return spec;
   }
 
@@ -192,7 +192,7 @@ class CompositionBuilder {
       posterTime: this._posterTime ?? undefined,
       voiceover: this._voiceover,
       audioProviders: this._audioProviders,
-      scenes: this.scenes,
+      timeline: this.timeline,
       audioPlan: this.audioPlan,
     };
   }

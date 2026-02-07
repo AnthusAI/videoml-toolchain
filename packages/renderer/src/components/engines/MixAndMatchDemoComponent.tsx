@@ -11,6 +11,7 @@ export type MixAndMatchDemoProps = {
   fps?: number;
   videoWidth?: number;
   videoHeight?: number;
+  scene?: { startSec?: number };
 };
 
 export function MixAndMatchDemoComponent({
@@ -18,7 +19,9 @@ export function MixAndMatchDemoComponent({
   fps = 30,
   videoWidth = 1920,
   videoHeight = 1080,
+  scene,
 }: MixAndMatchDemoProps) {
+  const sceneStartFrame = typeof scene?.startSec === 'number' ? Math.round(scene.startSec * fps) : 0;
   const cardRadius = 28;
   const cardPadding = 18;
   const cardBg = 'var(--color-surface, #1f2933)';
@@ -50,10 +53,35 @@ export function MixAndMatchDemoComponent({
           videoHeight={videoHeight}
           particleCount={36}
           radius={10}
+          focusX={0.46}
+          focusY={0.56}
+          sunOffsetX={-120}
+          sunOffsetY={90}
         />
       </div>
 
-      {/* Top row cards */}
+      {/* Framer Motion accent layer (behind panels) */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          transform: 'translate(-160px, 140px)',
+          zIndex: 0,
+        }}
+      >
+        <FramerMotionDemoComponent
+          frame={frame}
+          fps={fps}
+          videoWidth={videoWidth}
+          videoHeight={videoHeight}
+          size={180}
+          showBackground={false}
+          surface={'var(--color-surface-strong, #2a333b)'}
+        />
+      </div>
+
+      {/* Top row cards + Anime label below Three */}
       <div
         style={{
           position: 'absolute',
@@ -62,12 +90,15 @@ export function MixAndMatchDemoComponent({
           top: 64,
           display: 'grid',
           gridTemplateColumns: '1.25fr 0.75fr',
-          gap: 24,
+          gridTemplateRows: 'auto auto',
+          columnGap: 24,
+          rowGap: 20,
           alignItems: 'stretch',
+          zIndex: 2,
         }}
       >
         {/* D3 card */}
-        <div style={{ ...cardShadowless, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ ...cardShadowless, position: 'relative', overflow: 'hidden', gridColumn: '1 / 2', gridRow: '1 / 2' }}>
           <div style={{ color: cardMuted, fontSize: 12, letterSpacing: '0.2em', fontWeight: 700 }}>
             D3
           </div>
@@ -88,9 +119,9 @@ export function MixAndMatchDemoComponent({
         </div>
 
         {/* Three card */}
-        <div style={{ ...cardShadowless, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ ...cardShadowless, position: 'relative', overflow: 'hidden', gridColumn: '2 / 3', gridRow: '1 / 2' }}>
           <div style={{ color: cardMuted, fontSize: 12, letterSpacing: '0.2em', fontWeight: 700 }}>
-            THREE
+            THREE.JS
           </div>
           <div style={{ color: cardText, fontSize: 18, fontWeight: 700, marginTop: 6 }}>
             Spatial layer
@@ -99,38 +130,36 @@ export function MixAndMatchDemoComponent({
             <ThreeOrbitComponent
               frame={frame}
               fps={fps}
-              videoWidth={520}
-              videoHeight={420}
-              cubeSize={120}
+              videoWidth={660}
+              videoHeight={340}
+              cubeSize={170}
+              overscanX={0}
+              focusX={0.5}
               style={{ position: 'absolute', inset: 0 }}
             />
           </div>
         </div>
-      </div>
 
-      {/* Framer Motion accent layer */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-        <FramerMotionDemoComponent
-          frame={frame}
-          fps={fps}
-          videoWidth={videoWidth}
-          videoHeight={videoHeight}
-          size={180}
-          showBackground={false}
-          surface={'var(--color-surface-strong, #2a333b)'}
-        />
-      </div>
-
-      {/* Anime.js accent vignette */}
-      <div style={{ position: 'absolute', right: 64, bottom: 64, width: 520, height: 360, pointerEvents: 'none' }}>
-        <AnimeHarnessDemoComponent
-          frame={frame}
-          fps={fps}
-          videoWidth={520}
-          videoHeight={360}
-          showBackground={false}
-          style={{ width: '100%', height: '100%' }}
-        />
+        {/* Anime.js card */}
+        <div style={{ ...cardShadowless, position: 'relative', overflow: 'hidden', gridColumn: '2 / 3', gridRow: '2 / 3' }}>
+          <div style={{ color: cardMuted, fontSize: 12, letterSpacing: '0.2em', fontWeight: 700 }}>
+            ANIME.JS
+          </div>
+          <div style={{ color: cardText, fontSize: 18, fontWeight: 700, marginTop: 6 }}>
+            Auto layout
+          </div>
+          <div style={{ position: 'relative', height: 240, marginTop: 14 }}>
+            <AnimeHarnessDemoComponent
+              frame={frame}
+              fps={fps}
+              videoWidth={520}
+              videoHeight={300}
+              startFrame={sceneStartFrame}
+              showBackground={false}
+              style={{ width: '100%', height: '100%' }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Kinetic text overlay */}

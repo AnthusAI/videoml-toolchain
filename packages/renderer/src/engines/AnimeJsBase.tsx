@@ -6,6 +6,7 @@ export type AnimeJsBaseProps = {
   fps?: number;
   videoWidth?: number;
   videoHeight?: number;
+  startFrame?: number;
   className?: string;
   style?: React.CSSProperties;
   dataEngine?: string;
@@ -58,7 +59,7 @@ export abstract class AnimeJsBase<P extends AnimeJsBaseProps = AnimeJsBaseProps>
   }
 
   protected getStartFrameForProps(_props: P, _fps: number): number {
-    return 0;
+    return _props.startFrame ?? 0;
   }
 
   protected abstract buildTimeline(args: {

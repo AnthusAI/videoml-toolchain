@@ -18,6 +18,7 @@ export type TextEffectsProps = AnimeJsBaseProps & {
   color?: string;
   align?: 'left' | 'center' | 'right';
   fontFamily?: string;
+  lineHeight?: number;
 };
 
 export class TextEffectsComponent extends AnimeJsBase<TextEffectsProps> {
@@ -37,6 +38,7 @@ export class TextEffectsComponent extends AnimeJsBase<TextEffectsProps> {
       color = 'var(--color-text, #f2f4f8)',
       align = 'center',
       fontFamily = 'var(--font-headline, ui-sans-serif, system-ui, sans-serif)',
+      lineHeight = 1.05,
     } = this.props;
 
     const unit = this.props.effect.unit ?? 'chars';
@@ -116,7 +118,7 @@ export class TextEffectsComponent extends AnimeJsBase<TextEffectsProps> {
             fontSize,
             fontWeight,
             fontFamily,
-            lineHeight: 1.05,
+            lineHeight,
             letterSpacing: '-0.01em',
             whiteSpace: 'pre-wrap',
             display: 'inline-block',
@@ -144,7 +146,7 @@ export class TextEffectsComponent extends AnimeJsBase<TextEffectsProps> {
     const baseDelayMs = (delayFrames / Math.max(1, fps)) * 1000;
     const staggerMs = (staggerFrames / Math.max(1, fps)) * 1000;
     const ease = resolveEffectEasing(effect);
-    const props = effectToAnimeProps(effect.effect);
+    const props = effectToAnimeProps(effect);
 
     const tl = anime.createTimeline({ autoplay: false });
     tl.add(

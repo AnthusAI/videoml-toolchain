@@ -1,6 +1,5 @@
 import React from 'react';
 import * as d3 from 'd3';
-import { easeInOutCubic } from '../../math.js';
 import { D3SvgBase, type D3SvgProps } from '../../engines/D3SvgBase.js';
 import { resolveCssVar } from '../../engines/utils.js';
 
@@ -38,7 +37,8 @@ export class D3BarChartComponent extends D3SvgBase<D3BarChartProps> {
 
     const cycleFrames = Math.max(1, Math.round(fps * 4));
     const localFrame = frame % cycleFrames;
-    const t = easeInOutCubic(localFrame / cycleFrames);
+    const phase = (localFrame / cycleFrames) * Math.PI * 2;
+    const t = (Math.sin(phase) + 1) / 2;
 
     const data = valuesA.map((value, idx) => value + (valuesB[idx % valuesB.length] - value) * t);
     const width = size.width;
@@ -53,10 +53,13 @@ export class D3BarChartComponent extends D3SvgBase<D3BarChartProps> {
       .range([0, innerWidth])
       .padding(0.2);
 
+    const maxValue = Math.max(
+      d3.max(valuesA) ?? 1,
+      d3.max(valuesB) ?? 1,
+    );
     const yScale = d3
       .scaleLinear()
-      .domain([0, d3.max(data) ?? 1])
-      .nice()
+      .domain([0, maxValue])
       .range([innerHeight, 0]);
 
     const root = svg

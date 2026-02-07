@@ -43,7 +43,10 @@ import { KineticTextComponent } from "./engines/KineticTextComponent.js";
 import { MixAndMatchDemoComponent } from "./engines/MixAndMatchDemoComponent.js";
 import { AnimeHarnessDemoComponent } from "./engines/AnimeHarnessDemoComponent.js";
 import { TextEffectsDemoComponent } from "./engines/TextEffectsDemoComponent.js";
+import { GsapPrinciplesDemoComponent } from "./engines/GsapPrinciplesDemoComponent.js";
+import { TypefaceColorDemoComponent } from "./engines/TypefaceColorDemoComponent.js";
 import { TextEffectsComponent } from "./text/TextEffectsComponent.js";
+import { CtaSlideComponent } from "./marketing/CtaSlideComponent.js";
 
 export type ComponentType = React.ComponentType<any>;
 
@@ -55,6 +58,10 @@ registry.set("Subtitle", SubtitleComponent);
 registry.set("ProgressBar", ProgressBarComponent);
 registry.set("Rectangle", RectangleComponent);
 registry.set("Background", BackgroundComponent);
+registry.set("VideoTitle", TitleComponent);
+registry.set("VideoSubtitle", SubtitleComponent);
+registry.set("VideoRectangle", RectangleComponent);
+registry.set("VideoBackground", BackgroundComponent);
 registry.set("ColorThemeDemo", ColorThemeDemo);
 registry.set("ContentLayoutDemo", ContentLayoutDemo);
 registry.set("PlaceholderPanel", PlaceholderPanel);
@@ -95,7 +102,10 @@ registry.set("KineticText", KineticTextComponent);
 registry.set("MixAndMatchDemo", MixAndMatchDemoComponent);
 registry.set("AnimeHarnessDemo", AnimeHarnessDemoComponent);
 registry.set("TextEffectsDemo", TextEffectsDemoComponent);
+registry.set("GsapPrinciplesDemo", GsapPrinciplesDemoComponent);
+registry.set("TypefaceColorDemo", TypefaceColorDemoComponent);
 registry.set("TextEffects", TextEffectsComponent);
+registry.set("CtaSlide", CtaSlideComponent);
 
 export function registerComponent(name: string, component: ComponentType): void {
   registry.set(name, component);

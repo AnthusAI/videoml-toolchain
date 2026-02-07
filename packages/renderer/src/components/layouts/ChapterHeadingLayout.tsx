@@ -10,6 +10,7 @@ export type ChapterHeadingLayoutProps = {
   number: number | string;
   title: string;
   subtitle?: string;
+  showNumber?: boolean;
 
   // Typography
   numberSize?: number;
@@ -20,6 +21,8 @@ export type ChapterHeadingLayoutProps = {
   layout?: 'stacked' | 'inline' | 'side-by-side';
 
   numberColor?: string;
+  background?: string;
+  align?: 'left' | 'center' | 'right';
 
   // Animation
   numberEntrance?: TransitionConfig;
@@ -42,11 +45,14 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
     number,
     title,
     subtitle,
+    showNumber = true,
     numberSize = 200,
     titleSize = 72,
     subtitleSize = 32,
     layout = 'stacked',
     numberColor = '#ff6b6b',
+    background = 'var(--color-bg, #101010)',
+    align = 'center',
     numberEntrance,
     titleEntrance,
     numberEffect,
@@ -101,63 +107,67 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
-          alignItems: 'center',
+          alignItems: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
           padding: '80px',
-          background: 'var(--color-bg, #101010)',
+          background,
         }}
       >
+        {showNumber && (
+          <div
+            style={{
+              fontSize: `${numberSize}px`,
+              fontWeight: 700,
+              color: numberColor,
+              opacity: numberTransition.opacity,
+              transform: numberTransition.transform || 'none',
+              lineHeight: 1,
+            }}
+          >
+            {numberEffect ? (
+              <TextEffectsComponent
+                text={String(number)}
+                cue={cue}
+                frame={frame}
+                fps={fps}
+                videoWidth={videoWidth}
+                videoHeight={videoHeight}
+                effect={numberEffect}
+                fontSize={numberSize}
+                fontWeight={700}
+                color={numberColor}
+                align="center"
+              />
+            ) : (
+              number
+            )}
+          </div>
+        )}
         <div
           style={{
-            fontSize: `${numberSize}px`,
-            fontWeight: 700,
-            color: numberColor,
-            opacity: numberTransition.opacity,
-            transform: numberTransition.transform || 'none',
-            lineHeight: 1,
-          }}
-        >
-          {numberEffect ? (
-            <TextEffectsComponent
-              text={String(number)}
-              cue={cue}
-              frame={frame}
-              fps={fps}
-              videoWidth={videoWidth}
-              videoHeight={videoHeight}
-              effect={numberEffect}
-              fontSize={numberSize}
-              fontWeight={700}
-              color={numberColor}
-              align="center"
-            />
-          ) : (
-            number
-          )}
-        </div>
-        <div
-          style={{
-            marginTop: '32px',
-            textAlign: 'center',
+            marginTop: showNumber ? '32px' : 0,
+            textAlign: align,
             opacity: titleTransition.opacity,
             transform: titleTransition.transform || 'none',
           }}
         >
           {titleEffect ? (
-            <TextEffectsComponent
-              text={title}
-              cue={cue}
-              frame={frame}
-              fps={fps}
-              videoWidth={videoWidth}
-              videoHeight={videoHeight}
-              effect={titleEffect}
-              fontSize={titleSize}
-              fontWeight={700}
-              color={'var(--color-text, #ffffff)'}
-              align="center"
-            />
+              <TextEffectsComponent
+                text={title}
+                cue={cue}
+                frame={frame}
+                fps={fps}
+                videoWidth={videoWidth}
+                videoHeight={videoHeight}
+                effect={titleEffect}
+                fontSize={titleSize}
+                fontWeight={700}
+                color={'var(--color-text, #ffffff)'}
+                align="center"
+                lineHeight={1}
+                style={{ width: 'auto', height: 'auto', display: 'inline-block' }}
+              />
           ) : (
-            <div style={{ fontSize: `${titleSize}px`, fontWeight: 700, color: 'var(--color-text, #ffffff)' }}>
+            <div style={{ fontSize: `${titleSize}px`, fontWeight: 700, color: 'var(--color-text, #ffffff)', textAlign: align, lineHeight: 1 }}>
               {title}
             </div>
           )}
@@ -167,6 +177,7 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
                 fontSize: `${subtitleSize}px`,
                 color: 'var(--color-text-muted, #cccccc)',
                 marginTop: '16px',
+                textAlign: align,
               }}
             >
               {subtitleEffect ? (
@@ -182,6 +193,7 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
                   fontWeight={400}
                   color={'var(--color-text-muted, #cccccc)'}
                   align="center"
+                  style={{ width: 'auto', height: 'auto', display: 'inline-block' }}
                 />
               ) : (
                 subtitle
@@ -194,17 +206,87 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
   }
 
   if (layout === 'side-by-side') {
+    if (!showNumber) {
+      return (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
+            padding: '80px',
+            background,
+          }}
+        >
+          <div style={{ opacity: titleTransition.opacity, transform: titleTransition.transform || 'none' }}>
+            {titleEffect ? (
+              <TextEffectsComponent
+                text={title}
+                cue={cue}
+                frame={frame}
+                fps={fps}
+                videoWidth={videoWidth}
+                videoHeight={videoHeight}
+                effect={titleEffect}
+                fontSize={titleSize}
+                fontWeight={700}
+                color={'var(--color-text, #ffffff)'}
+                align={align}
+                lineHeight={1}
+                style={{ width: 'auto', height: 'auto', display: 'inline-block' }}
+              />
+            ) : (
+              <div style={{ fontSize: `${titleSize}px`, fontWeight: 700, color: 'var(--color-text, #ffffff)', textAlign: align, lineHeight: 1 }}>
+                {title}
+              </div>
+            )}
+            {subtitle && (
+              <div
+                style={{
+                  fontSize: `${subtitleSize}px`,
+                  color: 'var(--color-text-muted, #cccccc)',
+                  marginTop: '16px',
+                  textAlign: align,
+                }}
+              >
+                {subtitleEffect ? (
+                <TextEffectsComponent
+                  text={subtitle}
+                  cue={cue}
+                  frame={frame}
+                  fps={fps}
+                  videoWidth={videoWidth}
+                  videoHeight={videoHeight}
+                  effect={subtitleEffect}
+                  fontSize={subtitleSize}
+                  fontWeight={400}
+                  color={'var(--color-text-muted, #cccccc)'}
+                  align={align}
+                  style={{ width: 'auto', height: 'auto', display: 'inline-block' }}
+                />
+                ) : (
+                  subtitle
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
     return (
       <div
         style={{
           position: 'absolute',
           inset: 0,
           display: 'grid',
-          gridTemplateColumns: '1fr 2fr',
+          gridTemplateColumns: align === 'left' ? '1.2fr 0.8fr' : '1fr 2fr',
           gap: '48px',
           padding: '80px',
           alignItems: 'center',
-          background: 'var(--color-bg, #101010)',
+          justifyItems: align === 'left' ? 'start' : 'stretch',
+          background,
         }}
       >
         <div
@@ -212,7 +294,7 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
             fontSize: `${numberSize}px`,
             fontWeight: 700,
             color: numberColor,
-            textAlign: 'right',
+            textAlign: align === 'left' ? 'left' : 'right',
             opacity: numberTransition.opacity,
             transform: numberTransition.transform || 'none',
           }}
@@ -235,8 +317,8 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
             number
           )}
         </div>
-        <div style={{ opacity: titleTransition.opacity, transform: titleTransition.transform || 'none' }}>
-          {titleEffect ? (
+          <div style={{ opacity: titleTransition.opacity, transform: titleTransition.transform || 'none' }}>
+            {titleEffect ? (
             <TextEffectsComponent
               text={title}
               cue={cue}
@@ -249,12 +331,22 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
               fontWeight={700}
               color={'var(--color-text, #ffffff)'}
               align="left"
+              lineHeight={1}
+              style={{ width: 'auto', height: 'auto', display: 'inline-block' }}
             />
-          ) : (
-            <div style={{ fontSize: `${titleSize}px`, fontWeight: 700, color: 'var(--color-text, #ffffff)' }}>
+            ) : (
+            <div
+              style={{
+                fontSize: `${titleSize}px`,
+                fontWeight: 700,
+                color: 'var(--color-text, #ffffff)',
+                textAlign: align === 'left' ? 'left' : 'left',
+                lineHeight: 1,
+              }}
+            >
               {title}
             </div>
-          )}
+            )}
           {subtitle && (
             <div
               style={{
@@ -276,6 +368,7 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
                   fontWeight={400}
                   color={'var(--color-text-muted, #cccccc)'}
                   align="left"
+                  style={{ width: 'auto', height: 'auto', display: 'inline-block' }}
                 />
               ) : (
                 subtitle
@@ -288,16 +381,62 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
   }
 
   // inline
+  if (!showNumber) {
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
+          padding: '80px',
+          background,
+        }}
+      >
+        <div
+          style={{
+            fontSize: `${titleSize}px`,
+            fontWeight: 700,
+            color: 'var(--color-text, #ffffff)',
+            opacity: titleTransition.opacity,
+            transform: titleTransition.transform || 'none',
+            lineHeight: 1,
+          }}
+        >
+          {titleEffect ? (
+            <TextEffectsComponent
+              text={title}
+              cue={cue}
+              frame={frame}
+              fps={fps}
+              videoWidth={videoWidth}
+              videoHeight={videoHeight}
+              effect={titleEffect}
+              fontSize={titleSize}
+              fontWeight={700}
+              color={'var(--color-text, #ffffff)'}
+              align={align}
+              lineHeight={1}
+              style={{ width: 'auto', height: 'auto', display: 'inline-block' }}
+            />
+          ) : (
+            title
+          )}
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       style={{
         position: 'absolute',
         inset: 0,
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+          alignItems: 'center',
+          justifyContent: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
         padding: '80px',
-        background: 'var(--color-bg, #101010)',
+        background,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '24px' }}>
@@ -335,6 +474,7 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
             color: 'var(--color-text, #ffffff)',
             opacity: titleTransition.opacity,
             transform: titleTransition.transform || 'none',
+            lineHeight: 1,
           }}
         >
           {titleEffect ? (
@@ -350,6 +490,8 @@ export function ChapterHeadingLayout(props: ChapterHeadingLayoutProps) {
               fontWeight={700}
               color={'var(--color-text, #ffffff)'}
               align="left"
+              lineHeight={1}
+              style={{ width: 'auto', height: 'auto', display: 'inline-block' }}
             />
           ) : (
             title

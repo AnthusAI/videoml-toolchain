@@ -12,6 +12,10 @@ export type RectangleProps = {
   y?: number;
   width?: number | string; // Can be "100%" or pixel value
   height?: number | string;
+  xFrom?: number;
+  xTo?: number;
+  yFrom?: number;
+  yTo?: number;
 
   // Border/effects
   borderRadius?: number;
@@ -19,6 +23,7 @@ export type RectangleProps = {
 
   // Injected by renderer
   styles?: CascadedStyles;
+  transitionProgress?: number;
 };
 
 export function RectangleComponent(props: RectangleProps) {
@@ -30,18 +35,29 @@ export function RectangleComponent(props: RectangleProps) {
     y = 0,
     width = "100%",
     height = "100%",
+    xFrom,
+    xTo,
+    yFrom,
+    yTo,
     borderRadius,
     border,
     styles = {} as CascadedStyles,
+    transitionProgress,
   } = props;
 
   // Priority: gradient > image > color > styles.background > transparent
   const background = gradient || image || color || styles.background || "transparent";
 
+  const hasTransition = typeof transitionProgress === "number";
+  const resolvedX =
+    hasTransition && xFrom != null && xTo != null ? xFrom + (xTo - xFrom) * transitionProgress : x;
+  const resolvedY =
+    hasTransition && yFrom != null && yTo != null ? yFrom + (yTo - yFrom) * transitionProgress : y;
+
   // When width/height are percentages and x/y are 0, use inset positioning for better compatibility
   const useInsetPositioning = (width === "100%" || width === "100vw") &&
                                (height === "100%" || height === "100vh") &&
-                               x === 0 && y === 0;
+                               resolvedX === 0 && resolvedY === 0;
 
   return (
     <div
@@ -54,8 +70,8 @@ export function RectangleComponent(props: RectangleProps) {
         border,
       } : {
         position: "absolute",
-        left: x,
-        top: y,
+        left: resolvedX,
+        top: resolvedY,
         width,
         height,
         background,

@@ -43,7 +43,38 @@ export type ScriptScene = {
   layers?: unknown[];
   components?: unknown[];
   markup?: SemanticMarkup;
+  enter?: Record<string, unknown> | null;
+  exit?: Record<string, unknown> | null;
+  transitionToNext?: Record<string, unknown> | null;
 };
+
+export type ScriptTransition = {
+  id?: string | null;
+  startSec?: number;
+  endSec?: number;
+  effect?: string | null;
+  ease?: string | null;
+  props?: Record<string, unknown> | null;
+  mode?: "overlap" | "insert" | null;
+  overflow?: "clip" | "extend" | "allow" | null;
+  overflowAudio?: "clip" | "extend" | "allow" | null;
+  fromSceneId?: string | null;
+  toSceneId?: string | null;
+  styles?: Record<string, unknown> | null;
+  layers?: unknown[];
+  components?: unknown[];
+  markup?: SemanticMarkup;
+};
+
+export type ScriptMark = {
+  id?: string | null;
+  atSec?: number;
+};
+
+export type ScriptTimelineItem =
+  | { kind: "scene"; sceneId?: string | null; startSec?: number; endSec?: number }
+  | { kind: "transition" } & ScriptTransition
+  | { kind: "mark" } & ScriptMark;
 
 export type ScriptMeta = {
   fps?: number;
@@ -54,6 +85,7 @@ export type ScriptMeta = {
 
 export type ScriptData = {
   scenes?: ScriptScene[];
+  timeline?: ScriptTimelineItem[];
   fps?: number;
   meta?: ScriptMeta;
   styles?: Record<string, unknown>; // Composition-level styles
@@ -92,6 +124,21 @@ const getSceneEndSec = (scenes?: ScriptScene[]): number => {
   return maxEnd;
 };
 
+const getTimelineEndSec = (timeline?: ScriptTimelineItem[]): number => {
+  let maxEnd = 0;
+  for (const item of timeline ?? []) {
+    if (item.kind === "scene" || item.kind === "transition") {
+      const end = item.endSec ?? 0;
+      if (end > maxEnd) maxEnd = end;
+    }
+    if (item.kind === "mark") {
+      const at = item.atSec ?? 0;
+      if (at > maxEnd) maxEnd = at;
+    }
+  }
+  return maxEnd;
+};
+
 export const deriveVideoConfig = ({
   script,
   timeline,
@@ -103,7 +150,12 @@ export const deriveVideoConfig = ({
   const fps = script?.fps ?? meta?.fps ?? defaults?.fps ?? 30;
   const width = meta?.width ?? defaults?.width ?? 1280;
   const height = meta?.height ?? defaults?.height ?? 720;
-  const durationSec = Math.max(meta?.durationSeconds ?? 0, getSceneEndSec(script?.scenes), summary.durationSec);
+  const durationSec = Math.max(
+    meta?.durationSeconds ?? 0,
+    getSceneEndSec(script?.scenes),
+    getTimelineEndSec(script?.timeline),
+    summary.durationSec
+  );
   const durationFrames = Math.max(1, Math.ceil(durationSec * fps));
   return { fps, width, height, durationSec, durationFrames };
 };

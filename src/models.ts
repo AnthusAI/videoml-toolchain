@@ -1,5 +1,5 @@
 import { slugify } from "./util.js";
-import type { SemanticMarkup, VisualStyles, LayerSpec, ComponentSpec } from "./dsl/types.js";
+import type { SemanticMarkup, VisualStyles, LayerSpec, ComponentSpec, TransitionSpec, TransitionRef } from "./dsl/types.js";
 
 export type Bullet = { id: string; text: string };
 
@@ -35,6 +35,41 @@ export type Scene = {
   styles?: VisualStyles;
   layers?: LayerSpec[];
   components?: ComponentSpec[];
+  enter?: TransitionRef;
+  exit?: TransitionRef;
+  transitionToNext?: TransitionRef;
+};
+
+export type SceneTimelineItem = {
+  kind: "scene";
+  sceneId: string;
+  startSec: number;
+  endSec: number;
+};
+
+export type TransitionTimelineItem = {
+  kind: "transition";
+  id: string;
+  startSec: number;
+  endSec: number;
+  effect?: string;
+  ease?: string;
+  props?: Record<string, unknown>;
+  mode?: TransitionSpec["mode"];
+  overflow?: TransitionSpec["overflow"];
+  overflowAudio?: TransitionSpec["overflowAudio"];
+  fromSceneId?: string;
+  toSceneId?: string;
+  styles?: VisualStyles;
+  markup?: SemanticMarkup;
+  layers?: LayerSpec[];
+  components?: ComponentSpec[];
+};
+
+export type MarkTimelineItem = {
+  kind: "mark";
+  id: string;
+  atSec: number;
 };
 
 export type ScriptMeta = {
@@ -46,6 +81,7 @@ export type ScriptMeta = {
 
 export type Script = {
   scenes: Scene[];
+  timeline?: Array<SceneTimelineItem | TransitionTimelineItem | MarkTimelineItem>;
   posterTimeSec?: number | null;
   fps?: number;
   meta?: ScriptMeta;
@@ -66,6 +102,9 @@ export function scriptToJson(script: Script): Record<string, unknown> {
       ...(scene.styles ? { styles: scene.styles } : {}),
       ...(scene.layers ? { layers: scene.layers } : {}),
       ...(scene.components ? { components: scene.components } : {}),
+      ...(scene.enter ? { enter: scene.enter } : {}),
+      ...(scene.exit ? { exit: scene.exit } : {}),
+      ...(scene.transitionToNext ? { transitionToNext: scene.transitionToNext } : {}),
       cues: scene.cues.map((cue) => ({
         id: cue.id,
         label: cue.label,
@@ -78,6 +117,43 @@ export function scriptToJson(script: Script): Record<string, unknown> {
       })),
     })),
   };
+  if (script.timeline) {
+    out.timeline = script.timeline.map((item) => {
+      if (item.kind === "scene") {
+        return {
+          kind: item.kind,
+          sceneId: item.sceneId,
+          startSec: item.startSec,
+          endSec: item.endSec,
+        };
+      }
+      if (item.kind === "transition") {
+        return {
+          kind: item.kind,
+          id: item.id,
+          startSec: item.startSec,
+          endSec: item.endSec,
+          ...(item.effect ? { effect: item.effect } : {}),
+          ...(item.ease ? { ease: item.ease } : {}),
+          ...(item.props ? { props: item.props } : {}),
+          ...(item.mode ? { mode: item.mode } : {}),
+          ...(item.overflow ? { overflow: item.overflow } : {}),
+          ...(item.overflowAudio ? { overflowAudio: item.overflowAudio } : {}),
+          ...(item.fromSceneId ? { fromSceneId: item.fromSceneId } : {}),
+          ...(item.toSceneId ? { toSceneId: item.toSceneId } : {}),
+          ...(item.styles ? { styles: item.styles } : {}),
+          ...(item.markup ? { markup: item.markup } : {}),
+          ...(item.layers ? { layers: item.layers } : {}),
+          ...(item.components ? { components: item.components } : {}),
+        };
+      }
+      return {
+        kind: item.kind,
+        id: item.id,
+        atSec: item.atSec,
+      };
+    });
+  }
   if (script.posterTimeSec != null) {
     out.posterTimeSec = script.posterTimeSec;
   }

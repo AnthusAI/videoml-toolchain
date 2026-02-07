@@ -1,4 +1,5 @@
 import React from 'react';
+import gsapImport from 'gsap';
 import { interpolate } from '../../math.js';
 
 export type CodeLanguage =
@@ -35,6 +36,12 @@ export type CodeBlockProps = {
   height?: number;
   padding?: number;
   borderRadius?: number;
+  xFrom?: number;
+  xTo?: number;
+  yFrom?: number;
+  yTo?: number;
+  slideDurationFrames?: number;
+  slideEase?: string;
 
   // Animation
   revealStyle?: 'instant' | 'typewriter' | 'line-by-line' | 'fade';
@@ -51,6 +58,17 @@ export type CodeBlockProps = {
   fps?: number;
   videoWidth?: number;
   videoHeight?: number;
+};
+
+const gsap = (gsapImport as any).gsap ?? gsapImport;
+
+const resolveSlideEase = (ease?: string) => {
+  if (!ease) return undefined;
+  const parsed = (gsap as any).parseEase?.(ease);
+  if (typeof parsed === 'function') {
+    return parsed as (t: number) => number;
+  }
+  return undefined;
 };
 
 const themes: Record<CodeTheme, any> = {
@@ -136,6 +154,12 @@ export function CodeBlockComponent(props: CodeBlockProps) {
     height,
     padding = 24,
     borderRadius = 12,
+    xFrom,
+    xTo,
+    yFrom,
+    yTo,
+    slideDurationFrames = 0,
+    slideEase = 'power2.out',
     revealStyle = 'instant',
     typewriterSpeed = 1,
     showCursor = true,
@@ -151,8 +175,17 @@ export function CodeBlockComponent(props: CodeBlockProps) {
   const themeColors = themes[theme];
 
   // Calculate position
-  const x = position.x ?? (videoWidth - (width || 1200)) / 2;
-  const y = position.y ?? 100;
+  const targetX = xTo ?? position.x ?? (videoWidth - (width || 1200)) / 2;
+  const targetY = yTo ?? position.y ?? 100;
+  const easeFn = resolveSlideEase(slideEase);
+  const shouldSlideX = typeof xFrom === 'number' && typeof xTo === 'number' && slideDurationFrames > 0;
+  const shouldSlideY = typeof yFrom === 'number' && typeof yTo === 'number' && slideDurationFrames > 0;
+  const x = shouldSlideX
+    ? interpolate(relativeFrame, [0, slideDurationFrames], [xFrom, xTo], { clamp: true, easing: easeFn })
+    : targetX;
+  const y = shouldSlideY
+    ? interpolate(relativeFrame, [0, slideDurationFrames], [yFrom, yTo], { clamp: true, easing: easeFn })
+    : targetY;
 
   // Split code into lines
   const lines = code.split('\n');

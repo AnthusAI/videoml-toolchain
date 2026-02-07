@@ -5,12 +5,26 @@ import { getDefaultMusicProvider, getDefaultProvider, getDefaultSfxProvider, typ
 import { getEnvironment, resolveEnvCacheDir } from "./env.js";
 import { loadManifest, getManifestDuration, resolveCachedSegment, resolveCachedSfx, resolveCachedMusic } from "./cache-resolver.js";
 import { hashKey, safePrefix, ensureDir } from "./util.js";
-import { makeBullet, type Script, scriptToJson } from "./models.js";
+import { makeBullet, type Script, type TransitionTimelineItem, scriptToJson } from "./models.js";
 import { getTtsProvider } from "./providers/tts/registry.js";
 import { estimateDurationSec } from "./providers/tts/dry-run.js";
 import { getSfxProvider } from "./providers/sfx/registry.js";
 import { getMusicProvider } from "./providers/music/registry.js";
-import { type CompositionSpec, type PauseSpec, type SceneSpec, type VoiceSegmentSpec, type AudioClipSpec } from "./dsl/types.js";
+import {
+  type CompositionSpec,
+  type PauseSpec,
+  type SceneSpec,
+  type VoiceSegmentSpec,
+  type AudioClipSpec,
+  type TimelineItemSpec,
+  type TransitionSpec,
+  type MarkSpec,
+  type AudioElementSpec,
+  type AudioPlan,
+  type NarrationSpec,
+  type ComponentSpec,
+  type LayerSpec,
+} from "./dsl/types.js";
 import { pause as pauseHelper } from "./dsl/pause.js";
 import { concatAudioFiles, estimateTrailingSilenceSec, probeDurationSec, trimAudioToDuration } from "./media.js";
 import { writeSilenceWav } from "./audio/wav.js";
@@ -73,10 +87,10 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
   };
 
   const voiceover = composition.voiceover ?? {};
-  const sampleRateHz = voiceover.sampleRateHz ?? 44100;
+  const providerName = providerOverride ?? voiceover.provider ?? getDefaultProvider(config);
+  const sampleRateHz = voiceover.sampleRateHz ?? (providerName === "openai" ? 24000 : 44100);
   const leadInSec = voiceover.leadInSeconds ?? 0;
   const defaultTrimEnd = voiceover.trimEndSeconds ?? 0;
-  const providerName = providerOverride ?? voiceover.provider ?? getDefaultProvider(config);
   if (!providerName) {
     throw new CompileError(
       "No TTS provider configured. Set tts.default_provider or providers.openai.api_key (or pass --provider).",
@@ -184,6 +198,10 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     pronunciation_rules_hash: pronunciationRulesHash,
   };
 
+  const legacyScenes = (composition as { scenes?: SceneSpec[] }).scenes ?? [];
+  const timelineSpec: TimelineItemSpec[] = composition.timeline ?? legacyScenes;
+  const sceneItems = timelineSpec.filter((item): item is SceneSpec => !("kind" in item));
+
   let now = 0;
   const timelineItems: Array<Record<string, unknown>> = [];
   const outScenes: Script["scenes"] = [];
@@ -203,7 +221,7 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
   }
 
   if (leadInSec > 0) {
-    if (composition.scenes.some((scene) => scene.time)) {
+    if (sceneItems.some((scene) => scene.time)) {
       throw new CompileError("voiceover.leadInSeconds is only supported when scene times are omitted");
     }
     now = leadInSec;
@@ -228,17 +246,20 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     recordUsage(usageLedger, { ...entry, estimatedCost });
   };
 
-  for (const scene of composition.scenes) {
+  for (const scene of sceneItems) {
     if (scene.time?.start != null && scene.time.end == null) {
       throw new CompileError(
         `Scene "${scene.id}" has an open-ended duration. Live mode only: export requires an explicit end or duration.`,
       );
     }
-    const sceneStart = scene.time ? scene.time.start : now;
-    if (scene.time && sceneStart < now - 1e-6) {
-      throw new CompileError(`Scene "${scene.id}" starts before previous scene ends`);
+    const sceneStart = scene.time
+      ? scene.time.startIsRelative
+        ? now + (scene.time.start ?? 0)
+        : scene.time.start
+      : now;
+    if (scene.time?.start != null && !scene.time.startIsRelative && sceneStart > now) {
+      now = sceneStart;
     }
-    now = sceneStart;
     const cuesOut: Script["scenes"][number]["cues"] = [];
 
     for (let idx = 0; idx < scene.items.length; idx += 1) {
@@ -335,11 +356,25 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
           const cacheValid = cached.path && !fresh && existsSync(cached.path);
           if (cacheValid) {
             segPath = cached.path!;
-            duration = getManifestDuration(manifest, "segments", segPath, segKey) ?? probeDurationSec(segPath);
+            const manifestDuration = getManifestDuration(manifest, "segments", segPath, segKey);
+            const probedDuration = probeDurationSec(segPath);
+            duration = probedDuration;
             if (cached.env !== currentEnv) {
               _log(`tts: fallback scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} using env=${cached.env}`);
             } else if (verboseLogs) {
               _log(`tts: cache scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} key=${safePrefix(segKey).slice(0, 8)}`);
+            }
+            if (manifestDuration == null || Math.abs(manifestDuration - probedDuration) > 0.02) {
+              setManifestEntry(manifest, "segments", segPath, segKey, probedDuration, {
+                provider: providerName,
+                sceneId: scene.id,
+                cueId: cue.id,
+                text: segSpec.text,
+                sample_rate_hz: sampleRateHz,
+                format: segPath.split(".").pop(),
+                rawDurationSec: probedDuration,
+                trimEndSec: 0,
+              });
             }
           } else {
             // Log if cache entry exists but file is missing
@@ -461,6 +496,8 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
             durationSec: effectiveDuration,
             src: toPublicPath(staged),
             volume: 1.0,
+            sceneId: scene.id,
+            cueId: cue.id,
           });
         }
 
@@ -501,11 +538,15 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
       timelineItems.push({ type: "tts", sceneId: scene.id, cueId: cue.id, startSec: start, endSec: end, segments: cueSegments });
     }
 
-    if (!cuesOut.length) {
-      throw new CompileError(`Scene "${scene.id}" has no cues`);
+    if (!cuesOut.length && scene.time?.end == null) {
+      throw new CompileError(`Scene "${scene.id}" has no cues and no explicit end/duration`);
     }
 
-    const sceneEndHint = scene.time ? scene.time.end : null;
+    const sceneEndHint = scene.time?.end != null
+      ? scene.time.startIsRelative
+        ? sceneStart + (scene.time.end - (scene.time.start ?? 0))
+        : scene.time.end
+      : null;
     now = Math.max(now, sceneEndHint ?? now);
     // Inject sceneStartSec into component props
     const layersWithSceneStart = scene.layers?.map(layer => ({
@@ -529,6 +570,9 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
       styles: scene.styles,
       layers: layersWithSceneStart,
       components: scene.components,
+      enter: scene.enter,
+      exit: scene.exit,
+      transitionToNext: scene.transitionToNext,
     });
     if (sceneStartIndex[scene.id] != null) {
       throw new CompileError(`Duplicate scene id: "${scene.id}"`);
@@ -536,12 +580,528 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     sceneStartIndex[scene.id] = sceneStart;
   }
 
+  let outSceneById = new Map(outScenes.map((scene) => [scene.id, scene]));
+  const timeline: Script["timeline"] = [];
+  const DEFAULT_TRANSITION_DURATION_SEC = 1;
+
+  const isSceneItem = (item: TimelineItemSpec): item is SceneSpec => !("kind" in item);
+  const isTransitionItem = (item: TimelineItemSpec): item is TransitionSpec =>
+    "kind" in item && item.kind === "transition";
+  const isMarkItem = (item: TimelineItemSpec): item is MarkSpec => "kind" in item && item.kind === "mark";
+  const isNarrationItem = (item: TimelineItemSpec): item is NarrationSpec =>
+    "kind" in item && item.kind === "narration";
+
+  const findPrevSceneId = (index: number) => {
+    for (let i = index - 1; i >= 0; i -= 1) {
+      const item = timelineSpec[i];
+      if (isSceneItem(item)) return item.id;
+    }
+    return undefined;
+  };
+
+  const findNextSceneId = (index: number) => {
+    for (let i = index + 1; i < timelineSpec.length; i += 1) {
+      const item = timelineSpec[i];
+      if (isSceneItem(item)) return item.id;
+    }
+    return undefined;
+  };
+
+  const getTransitionDurationSeconds = (transition: TransitionSpec): number => {
+    let maxAudioEnd = 0;
+    if (transition.overflowAudio === "extend" && transition.audio?.length) {
+      for (const audio of transition.audio) {
+        const offset = audio.time?.start ?? 0;
+        let duration = audio.durationSeconds ?? null;
+        if (duration == null && audio.time?.start != null && audio.time?.end != null) {
+          duration = Math.max(0, audio.time.end - audio.time.start);
+        }
+        if (duration != null) {
+          maxAudioEnd = Math.max(maxAudioEnd, offset + duration);
+        }
+      }
+    }
+    if (transition.time?.start != null && transition.time?.end != null) {
+      return Math.max(0, transition.time.end - transition.time.start);
+    }
+    return Math.max(transition.durationSeconds ?? DEFAULT_TRANSITION_DURATION_SEC, maxAudioEnd);
+  };
+
+  const shiftBefore: number[] = [];
+  const shiftBySceneId = new Map<string, number>();
+  let cumulativeShift = 0;
+
+  for (let i = 0; i < timelineSpec.length; i += 1) {
+    shiftBefore[i] = cumulativeShift;
+    const item = timelineSpec[i];
+    if (isSceneItem(item)) {
+      shiftBySceneId.set(item.id, cumulativeShift);
+      continue;
+    }
+    if (isTransitionItem(item) && (item.mode ?? "overlap") === "insert") {
+      const duration = getTransitionDurationSeconds(item);
+      const prevSceneId = findPrevSceneId(i);
+      const nextSceneId = findNextSceneId(i);
+      let extraShift = duration;
+      if (prevSceneId && nextSceneId) {
+        const prevScene = outSceneById.get(prevSceneId);
+        const nextScene = outSceneById.get(nextSceneId);
+        if (prevScene && nextScene) {
+          const prevShift = shiftBySceneId.get(prevSceneId) ?? 0;
+          const prevEnd = prevScene.endSec + prevShift;
+          const nextStart = nextScene.startSec + cumulativeShift;
+          extraShift = Math.max(0, prevEnd + duration - nextStart);
+        }
+      }
+      cumulativeShift += extraShift;
+    }
+  }
+
+  const shiftTiming = (timing: { startSec?: number; endSec?: number } | undefined, delta: number) => {
+    if (!timing) return;
+    if (timing.startSec != null) timing.startSec += delta;
+    if (timing.endSec != null) timing.endSec += delta;
+  };
+
+  const shiftComponentTiming = (component: ComponentSpec, delta: number) => {
+    if (component.timing) {
+      shiftTiming(component.timing, delta);
+    }
+  };
+
+  const shiftLayerTiming = (layer: LayerSpec, delta: number) => {
+    if (layer.timing) {
+      shiftTiming(layer.timing, delta);
+    }
+    for (const component of layer.components ?? []) {
+      shiftComponentTiming(component, delta);
+    }
+  };
+
+  for (const scene of outScenes) {
+    const delta = shiftBySceneId.get(scene.id) ?? 0;
+    if (!delta) continue;
+    scene.startSec += delta;
+    scene.endSec += delta;
+    for (const cue of scene.cues ?? []) {
+      cue.startSec += delta;
+      cue.endSec += delta;
+      for (const segment of cue.segments ?? []) {
+        segment.startSec += delta;
+        segment.endSec += delta;
+      }
+    }
+    for (const layer of scene.layers ?? []) {
+      shiftLayerTiming(layer as LayerSpec, delta);
+    }
+    for (const component of scene.components ?? []) {
+      shiftComponentTiming(component as ComponentSpec, delta);
+    }
+  }
+
+  for (const item of timelineItems) {
+    const sceneId = (item as { sceneId?: string }).sceneId;
+    if (!sceneId) continue;
+    const delta = shiftBySceneId.get(sceneId) ?? 0;
+    if (!delta) continue;
+    if (typeof (item as { startSec?: number }).startSec === "number") {
+      (item as { startSec?: number }).startSec! += delta;
+    }
+    if (typeof (item as { endSec?: number }).endSec === "number") {
+      (item as { endSec?: number }).endSec! += delta;
+    }
+    if (Array.isArray((item as { segments?: Array<{ startSec: number; endSec: number }> }).segments)) {
+      for (const segment of (item as { segments: Array<{ startSec: number; endSec: number }> }).segments) {
+        segment.startSec += delta;
+        segment.endSec += delta;
+      }
+    }
+  }
+
+  for (const clip of narrationSegmentClips) {
+    const sceneId = (clip as { sceneId?: string }).sceneId;
+    if (!sceneId) continue;
+    const delta = shiftBySceneId.get(sceneId) ?? 0;
+    if (!delta) continue;
+    if (typeof (clip as { startSec?: number }).startSec === "number") {
+      (clip as { startSec?: number }).startSec! += delta;
+    }
+  }
+
+  for (const key of Object.keys(cueStartIndex)) {
+    delete cueStartIndex[key];
+  }
+  for (const scene of outScenes) {
+    for (const cue of scene.cues ?? []) {
+      cueStartIndex[cue.id] = cue.startSec;
+    }
+  }
+
+  for (let i = 0; i < timelineSpec.length; i += 1) {
+    const item = timelineSpec[i];
+    if (!isNarrationItem(item)) continue;
+    const shift = shiftBefore[i] ?? 0;
+    const narrationSceneId = `narration:${item.id}`;
+    let narrationStart = item.time?.start != null ? item.time.start + shift : null;
+    if (narrationStart == null) {
+      const nextSceneId = findNextSceneId(i);
+      const nextScene = nextSceneId ? outSceneById.get(nextSceneId) : null;
+      narrationStart = nextScene?.startSec ?? null;
+    }
+    if (narrationStart == null) {
+      throw new CompileError(`Narration "${item.id}" requires a start time or a following scene.`);
+    }
+    let narrationNow = narrationStart;
+
+    for (let idx = 0; idx < item.items.length; idx += 1) {
+      const entry = item.items[idx];
+      if (idx > 0) {
+        const pauseSpec = normalizePauseSpec(voiceover.pauseBetweenItems);
+        if (pauseSpec) {
+          const pause = samplePause(pauseSpec, rng);
+          if (pause > 0) {
+            const start = narrationNow;
+            narrationNow += pause;
+            timelineItems.push({
+              type: "pause",
+              sceneId: narrationSceneId,
+              startSec: start,
+              endSec: narrationNow,
+              seconds: pause,
+            });
+          }
+        }
+      }
+
+      if (entry.kind === "pause") {
+        const pauseSec = samplePause(entry, rng);
+        const start = narrationNow;
+        narrationNow += pauseSec;
+        timelineItems.push({
+          type: "pause",
+          sceneId: narrationSceneId,
+          startSec: start,
+          endSec: narrationNow,
+          seconds: pauseSec,
+        });
+        continue;
+      }
+
+      const cue = entry;
+      const start = narrationNow;
+      const cueSegments: Array<Record<string, unknown>> = [];
+
+      for (let segIndex = 0; segIndex < cue.segments.length; segIndex += 1) {
+        const segSpec = cue.segments[segIndex];
+        if (segSpec.kind === "pause") {
+          const pauseSec = samplePause(segSpec.pause, rng);
+          const segStart = narrationNow;
+          narrationNow += pauseSec;
+          cueSegments.push({ type: "pause", startSec: segStart, endSec: narrationNow, seconds: pauseSec });
+          continue;
+        }
+
+        const trimEndCfg = segSpec.trimEndSec ?? defaultTrimEnd ?? 0;
+        const segKey = hashKey({
+          kind: "tts",
+          sceneId: narrationSceneId,
+          cueId: cue.id,
+          text: segSpec.text,
+          trimEndSec: trimEndCfg,
+          ctx: ttsContext,
+        });
+        let duration: number;
+        let segPath: string | null = null;
+
+        if (dryRunMode) {
+          const wpm = (provider as { wpm?: number }).wpm ?? 165;
+          duration = estimateDurationSec(segSpec.text, wpm);
+        } else {
+          segmentKeyCounts[segKey] = (segmentKeyCounts[segKey] ?? 0) + 1;
+          const occurrence = segmentKeyCounts[segKey];
+          const ttsExt = providerName === "elevenlabs" ? ".mp3" : ".wav";
+          segPath = join(
+            segmentsDir,
+            `${narrationSceneId}--${cue.id}--tts--${safePrefix(segKey)}--${occurrence}${ttsExt}`,
+          );
+
+          const cached = resolveCachedSegment(
+            outDir,
+            currentEnv,
+            segKey,
+            narrationSceneId,
+            cue.id,
+            occurrence,
+            ttsExt,
+            _log,
+          );
+          const cacheValid = cached.path && !fresh && existsSync(cached.path);
+          if (cacheValid) {
+            segPath = cached.path!;
+            const manifestDuration = getManifestDuration(manifest, "segments", segPath, segKey);
+            const probedDuration = probeDurationSec(segPath);
+            duration = probedDuration;
+            if (cached.env !== currentEnv) {
+              _log(`tts: fallback scene=${narrationSceneId} cue=${cue.id} seg=${segIndex + 1} using env=${cached.env}`);
+            } else if (verboseLogs) {
+              _log(
+                `tts: cache scene=${narrationSceneId} cue=${cue.id} seg=${segIndex + 1} key=${safePrefix(segKey).slice(0, 8)}`,
+              );
+            }
+            if (manifestDuration != null) {
+              duration = manifestDuration;
+            } else if (duration != null) {
+              setManifestEntry(manifest, "segments", segPath, segKey, duration, {
+                provider: providerName,
+                sceneId: narrationSceneId,
+                cueId: cue.id,
+                text: segSpec.text,
+                sample_rate_hz: sampleRateHz,
+                format: segPath.split(".").pop(),
+                rawDurationSec: duration,
+                trimEndSec: trimEndCfg,
+              });
+            }
+          } else {
+            if (cached.path) {
+              _log(`tts: cache miss scene=${narrationSceneId} cue=${cue.id} seg=${segIndex + 1} (manifest entry exists but file missing)`);
+            }
+            _log(`tts: synth scene=${narrationSceneId} cue=${cue.id} seg=${segIndex + 1} -> ${segPath.split(sep).pop()}`);
+            if (!segPath) {
+              throw new CompileError(
+                `Missing segment path for TTS regeneration.\n\nLocation: ${dslPath}\n  Narration: ${item.id}\n  Cue: ${cue.id}\n  Segment: ${segIndex + 1}`,
+              );
+            }
+            if (!provider?.synthesize) {
+              throw new CompileError(
+                `TTS provider "${providerName}" does not support synthesis.\n\nLocation: ${dslPath}\n  Narration: ${item.id}\n  Cue: ${cue.id}\n  Segment: ${segIndex + 1}`,
+              );
+            }
+            ensureDir(dirname(segPath));
+            const seg = await provider.synthesize(
+              {
+                text: segSpec.text,
+                voice: voiceover.voice ?? null,
+                model: voiceover.model ?? null,
+                format: voiceover.format ?? "wav",
+                sampleRateHz,
+                extra: effectivePronunciationLocators
+                  ? { pronunciation_dictionary_locators: effectivePronunciationLocators }
+                  : {},
+              },
+              segPath,
+            );
+            duration = seg.durationSec ?? probeDurationSec(segPath);
+            if (!duration || !Number.isFinite(duration)) {
+              throw new CompileError(
+                `TTS provider returned invalid duration.\n\nLocation: ${dslPath}\n  Narration: ${item.id}\n  Cue: ${cue.id}\n  Segment: ${segIndex + 1}`,
+              );
+            }
+            if (duration < 0.01) {
+              _log(
+                `tts: corrupt-duration scene=${narrationSceneId} cue=${cue.id} seg=${segIndex + 1} duration=${duration.toFixed(1)}s -> regen`,
+              );
+              unlinkSync(segPath);
+              segIndex -= 1;
+              continue;
+            }
+            setManifestEntry(manifest, "segments", segPath, segKey, duration, {
+              provider: providerName,
+              sceneId: narrationSceneId,
+              cueId: cue.id,
+              text: segSpec.text,
+              sample_rate_hz: sampleRateHz,
+              format: segPath.split(".").pop(),
+              rawDurationSec: duration,
+              trimEndSec: trimEndCfg,
+            });
+          }
+        }
+
+        const effectiveDuration = duration - Math.max(0, trimEndCfg);
+        const segStart = narrationNow;
+        const segEnd = segStart + effectiveDuration;
+        narrationNow = segEnd;
+
+        let concatPath: string | null = null;
+        if (segPath) {
+          concatPath = trimEndCfg > 0
+            ? ensureTrimmed(segPath, envCacheDir, effectiveDuration, sampleRateHz, fresh)
+            : segPath;
+        }
+
+        if (publicSegmentsDir && concatPath) {
+          const staged = join(publicSegmentsDir, concatPath.split(sep).pop() ?? "segment.wav");
+          copyFileSync(concatPath, staged);
+          narrationSegmentClips.push({
+            id: staged.split(sep).pop()?.replace(/\.[^.]+$/, "") ?? "segment",
+            kind: "file",
+            startSec: segStart,
+            durationSec: effectiveDuration,
+            src: toPublicPath(staged),
+            volume: 1.0,
+            sceneId: narrationSceneId,
+            cueId: cue.id,
+          });
+        }
+
+        cueSegments.push({
+          type: "tts",
+          startSec: segStart,
+          endSec: segEnd,
+          text: segSpec.text,
+          segmentPath: segPath ?? undefined,
+          durationSec: effectiveDuration,
+          rawDurationSec: duration,
+          trimEndSec: trimEndCfg,
+        });
+      }
+
+      const end = narrationNow;
+      if (cueStartIndex[cue.id] != null) {
+        throw new CompileError(`Duplicate cue id across scenes/narration: "${cue.id}"`);
+      }
+      cueStartIndex[cue.id] = start;
+      timelineItems.push({
+        type: "tts",
+        sceneId: narrationSceneId,
+        cueId: cue.id,
+        startSec: start,
+        endSec: end,
+        segments: cueSegments,
+      });
+    }
+  }
+
+  outSceneById = new Map(outScenes.map((scene) => [scene.id, scene]));
+
+  const buildTransitionTimelineItem = (
+    transition: Pick<
+      TransitionSpec,
+      | "id"
+      | "time"
+      | "effect"
+      | "ease"
+      | "props"
+      | "mode"
+      | "overflow"
+      | "overflowAudio"
+      | "styles"
+      | "markup"
+      | "layers"
+      | "components"
+      | "durationSeconds"
+      | "audio"
+    >,
+    prevSceneId?: string,
+    nextSceneId?: string,
+  ): TransitionTimelineItem => {
+    const prevScene = prevSceneId ? outSceneById.get(prevSceneId) : undefined;
+    const nextScene = nextSceneId ? outSceneById.get(nextSceneId) : undefined;
+    const durationSeconds = getTransitionDurationSeconds(transition as TransitionSpec);
+    const mode: TransitionSpec["mode"] =
+      transition.mode ?? (prevScene && nextScene ? "overlap" : "insert");
+    const startSec =
+      transition.time?.start != null
+        ? transition.time.start
+        : mode === "overlap" && prevScene
+          ? Math.max(0, prevScene.endSec - durationSeconds)
+          : prevScene?.endSec ?? 0;
+    const endSec = transition.time?.end ?? startSec + durationSeconds;
+
+    if (mode === "overlap" && nextScene && startSec < nextScene.startSec) {
+      nextScene.startSec = startSec;
+    }
+
+    return {
+      kind: "transition",
+      id: transition.id,
+      startSec,
+      endSec,
+      effect: transition.effect,
+      ease: transition.ease,
+      props: transition.props,
+      mode,
+      overflow: transition.overflow,
+      overflowAudio: transition.overflowAudio,
+      fromSceneId: prevSceneId,
+      toSceneId: nextSceneId,
+      styles: transition.styles,
+      markup: transition.markup,
+      layers: transition.layers,
+      components: transition.components,
+    };
+  };
+
+  for (let i = 0; i < timelineSpec.length; i += 1) {
+    const item = timelineSpec[i];
+    if (isSceneItem(item)) {
+      const sceneOut = outSceneById.get(item.id);
+      if (!sceneOut) continue;
+      timeline.push({
+        kind: "scene",
+        sceneId: sceneOut.id,
+        startSec: sceneOut.startSec,
+        endSec: sceneOut.endSec,
+      });
+
+      const nextItem = timelineSpec[i + 1];
+      if (item.transitionToNext && (!nextItem || !isTransitionItem(nextItem))) {
+        const nextSceneId = findNextSceneId(i);
+        timeline.push(
+          buildTransitionTimelineItem(
+            {
+              id: `${item.id}__to_next`,
+              effect: item.transitionToNext.effect,
+              ease: item.transitionToNext.ease,
+              props: item.transitionToNext.props,
+              durationSeconds: item.transitionToNext.durationSeconds,
+            },
+            item.id,
+            nextSceneId,
+          ),
+        );
+      }
+      continue;
+    }
+    if (isTransitionItem(item)) {
+      const prevSceneId = findPrevSceneId(i);
+      const nextSceneId = findNextSceneId(i);
+      const shift = shiftBefore[i] ?? 0;
+      const adjustedTransition = item.time
+        ? {
+            ...item,
+            time: {
+              start: item.time.start + shift,
+              end: item.time.end != null ? item.time.end + shift : item.time.end,
+            },
+          }
+        : item;
+      timeline.push(buildTransitionTimelineItem(adjustedTransition, prevSceneId, nextSceneId));
+      continue;
+    }
+    if (isMarkItem(item)) {
+      const shift = shiftBefore[i] ?? 0;
+      timeline.push({ kind: "mark", id: item.id, atSec: item.at + shift });
+    }
+  }
+
   const script: Script = {
     scenes: outScenes,
+    timeline,
     posterTimeSec: composition.posterTime ?? null,
     fps: composition.meta?.fps,
     meta: composition.meta,
   };
+  for (const scene of outScenes) {
+    sceneStartIndex[scene.id] = scene.startSec;
+  }
+  const markStartIndex: Record<string, number> = {};
+  for (const item of timeline ?? []) {
+    if (item.kind === "mark") {
+      markStartIndex[item.id] = item.atSec;
+    }
+  }
   const sceneEndIndex: Record<string, number> = {};
   for (const scene of outScenes) {
     sceneEndIndex[scene.id] = scene.endSec;
@@ -554,21 +1114,108 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     _log(`write: script=${scriptOut} duration_seconds=${totalEndSec.toFixed(2)}`);
   }
 
-  const audioTracksOut: Array<Record<string, unknown>> = [];
-  if (narrationSegmentClips.length) {
-    audioTracksOut.push({ id: "narration", kind: "narration", clips: narrationSegmentClips });
+  const transitionWindowById = new Map<string, { startSec: number; endSec: number; overflowAudio?: TransitionSpec["overflowAudio"] }>();
+  for (const item of timeline ?? []) {
+    if (item.kind === "transition") {
+      transitionWindowById.set(item.id, {
+        startSec: item.startSec,
+        endSec: item.endSec,
+        overflowAudio: item.overflowAudio,
+      });
+    }
   }
 
-  if (composition.audioPlan) {
+  const audioElementClips: AudioClipSpec[] = [];
+  const pushAudioElements = (
+    elements: AudioElementSpec[] | undefined,
+    containerStartSec: number,
+    window?: { startSec: number; endSec: number; overflowAudio?: TransitionSpec["overflowAudio"] },
+  ) => {
+    if (!elements) return;
+    for (const element of elements) {
+      const offset = element.time?.start ?? 0;
+      const absoluteStart = containerStartSec + offset;
+      let durationSeconds = element.durationSeconds ?? null;
+      if (durationSeconds == null && element.time?.start != null && element.time?.end != null) {
+        durationSeconds = Math.max(0, element.time.end - element.time.start);
+      }
+      if (window?.overflowAudio === "clip" && window.endSec != null) {
+        const maxDuration = Math.max(0, window.endSec - absoluteStart);
+        durationSeconds = durationSeconds == null ? maxDuration : Math.min(durationSeconds, maxDuration);
+      }
+      if (durationSeconds === 0) {
+        continue;
+      }
+      audioElementClips.push({
+        id: element.id,
+        kind: element.kind,
+        start: { kind: "absolute", sec: absoluteStart },
+        volume: element.volume,
+        fadeTo: element.fadeTo,
+        fadeOut: element.fadeOut,
+        sourceId: element.sourceId,
+        playThrough: element.playThrough,
+        src: element.src,
+        prompt: element.prompt,
+        durationSeconds: durationSeconds ?? undefined,
+        variants: element.variants,
+        pick: element.pick,
+        modelId: element.modelId,
+        forceInstrumental: element.forceInstrumental,
+      });
+    }
+  };
+
+  for (const scene of sceneItems) {
+    const sceneOut = outSceneById.get(scene.id);
+    if (!sceneOut) continue;
+    pushAudioElements(scene.audio, sceneOut.startSec);
+  }
+
+  for (const item of timelineSpec) {
+    if (isTransitionItem(item) && item.audio?.length) {
+      const window = transitionWindowById.get(item.id);
+      const startSec = window?.startSec ?? 0;
+      pushAudioElements(item.audio, startSec, window);
+    }
+  }
+
+  const derivedAudioPlan: AudioPlan | null = audioElementClips.length
+    ? { tracks: [] }
+    : null;
+  if (derivedAudioPlan) {
+    for (const clip of audioElementClips) {
+      const trackId = clip.kind;
+      let track = derivedAudioPlan.tracks.find((t) => t.id === trackId);
+      if (!track) {
+        track = { id: trackId, kind: trackId, clips: [] };
+        derivedAudioPlan.tracks.push(track);
+      }
+      track.clips.push(clip);
+    }
+  }
+
+  const effectiveAudioPlan = mergeAudioPlans(composition.audioPlan, derivedAudioPlan);
+
+  const audioTracksOut: Array<Record<string, unknown>> = [];
+  if (narrationSegmentClips.length) {
+    const narrationClips = narrationSegmentClips.map((clip) => {
+      const { sceneId, cueId, ...rest } = clip as Record<string, unknown>;
+      return rest;
+    });
+    audioTracksOut.push({ id: "narration", kind: "narration", clips: narrationClips });
+  }
+
+  if (effectiveAudioPlan) {
     const sfxSelections = loadSelections(outDir);
     const defaultSfxProvider = sfxProviderOverride
       ?? composition.audioProviders?.sfx
-      ?? composition.audioPlan.sfxProvider
+      ?? effectiveAudioPlan.sfxProvider
       ?? getDefaultSfxProvider(config)
       ?? "dry-run";
     const defaultMusicProvider = musicProviderOverride
       ?? composition.audioProviders?.music
-      ?? composition.audioPlan.musicProvider
+      ?? effectiveAudioPlan.musicProvider
       ?? getDefaultMusicProvider(config)
       ?? "dry-run";
 
@@ -603,10 +1250,10 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     if (publicSfxDir) ensureDir(publicSfxDir);
     if (publicMusicDir) ensureDir(publicMusicDir);
 
-    for (const track of composition.audioPlan.tracks) {
+    for (const track of effectiveAudioPlan.tracks) {
       const clipsOut: Array<Record<string, unknown>> = [];
       for (const clip of track.clips) {
-        const startSec = resolveStart(clip.start, cueStartIndex, sceneStartIndex);
+        const startSec = resolveStart(clip.start, cueStartIndex, sceneStartIndex, markStartIndex);
         if (clip.kind === "file") {
           const durationForFades = clip.fadeTo || clip.fadeOut ? Math.max(0, totalEndSec - startSec) : null;
           const envelope = volumeEnvelopeForClip(clip.volume ?? 1, durationForFades, clip.fadeTo, clip.fadeOut);
@@ -995,6 +1642,17 @@ function providerCacheContext(providerName: string, provider: unknown): Record<s
   return { provider: providerName };
 }
 
+function mergeAudioPlans(base?: AudioPlan | null, extra?: AudioPlan | null): AudioPlan | null {
+  if (!base && !extra) return null;
+  if (!base) return extra ?? null;
+  if (!extra) return base;
+  return {
+    ...base,
+    ...extra,
+    tracks: [...base.tracks, ...extra.tracks],
+  };
+}
+
 function normalizePauseSpec(value: PauseSpec | number | undefined | null): PauseSpec | null {
   if (value == null) {
     return null;
@@ -1062,7 +1720,12 @@ function toPublicPath(path: string): string {
   return rel.startsWith("/") ? rel : `/${rel}`;
 }
 
-function resolveStart(start: AudioClipSpec["start"], cueIndex: Record<string, number>, sceneIndex: Record<string, number>): number {
+function resolveStart(
+  start: AudioClipSpec["start"],
+  cueIndex: Record<string, number>,
+  sceneIndex: Record<string, number>,
+  markIndex: Record<string, number>,
+): number {
   if (start.kind === "absolute") {
     return start.sec;
   }
@@ -1073,11 +1736,21 @@ function resolveStart(start: AudioClipSpec["start"], cueIndex: Record<string, nu
     }
     return base + (start.cue.offsetSec ?? 0);
   }
-  const base = sceneIndex[start.scene.sceneId];
-  if (base == null) {
-    throw new CompileError(`Unknown scene in audio start: "${start.scene.sceneId}"`);
+  if (start.kind === "scene") {
+    const base = sceneIndex[start.scene.sceneId];
+    if (base == null) {
+      throw new CompileError(`Unknown scene in audio start: "${start.scene.sceneId}"`);
+    }
+    return base + (start.scene.offsetSec ?? 0);
   }
-  return base + (start.scene.offsetSec ?? 0);
+  if (start.kind === "mark") {
+    const base = markIndex[start.mark.markId];
+    if (base == null) {
+      throw new CompileError(`Unknown mark in audio start: "${start.mark.markId}"`);
+    }
+    return base + (start.mark.offsetSec ?? 0);
+  }
+  throw new CompileError("Unsupported audio start kind");
 }
 
 function resolveSceneForStart(

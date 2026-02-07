@@ -34,6 +34,13 @@ export type CueSpec = {
   provider?: string | null;
 };
 
+export type TransitionRef = {
+  effect: string;
+  durationSeconds?: number;
+  ease?: string;
+  props?: Record<string, unknown>;
+};
+
 export type SceneSpec = {
   id: string;
   title: string;
@@ -43,6 +50,42 @@ export type SceneSpec = {
   styles?: VisualStyles; // Scene-level styles (cascade to layers/components)
   layers?: LayerSpec[]; // Grouped components with shared styles
   components?: ComponentSpec[]; // Visual components to render (backward compat)
+  enter?: TransitionRef;
+  exit?: TransitionRef;
+  transitionToNext?: TransitionRef;
+  audio?: AudioElementSpec[];
+};
+
+export type TransitionSpec = {
+  kind: "transition";
+  id: string;
+  title?: string;
+  time?: TimeRange;
+  effect?: string;
+  ease?: string;
+  props?: Record<string, unknown>;
+  mode?: "overlap" | "insert";
+  durationSeconds?: number;
+  overflow?: "clip" | "extend" | "allow";
+  overflowAudio?: "clip" | "extend" | "allow";
+  markup?: SemanticMarkup;
+  styles?: VisualStyles;
+  layers?: LayerSpec[];
+  components?: ComponentSpec[];
+  audio?: AudioElementSpec[];
+};
+
+export type MarkSpec = {
+  kind: "mark";
+  id: string;
+  at: number;
+};
+
+export type NarrationSpec = {
+  kind: "narration";
+  id: string;
+  time?: TimeRange;
+  items: Array<CueSpec | PauseSpec>;
 };
 
 export type PronunciationLexemeSpec = {
@@ -90,11 +133,31 @@ export type VolumeFadeOutSpec = {
 
 export type CueRef = { cueId: string; offsetSec?: number };
 export type SceneRef = { sceneId: string; offsetSec?: number };
+export type MarkRef = { markId: string; offsetSec?: number };
 
 export type StartAt =
   | { kind: "absolute"; sec: number }
   | { kind: "cue"; cue: CueRef }
-  | { kind: "scene"; scene: SceneRef };
+  | { kind: "scene"; scene: SceneRef }
+  | { kind: "mark"; mark: MarkRef };
+
+export type AudioElementSpec = {
+  id: string;
+  kind: "file" | "sfx" | "music";
+  time?: TimeRange;
+  volume?: number;
+  fadeTo?: VolumeFadeToSpec;
+  fadeOut?: VolumeFadeOutSpec;
+  sourceId?: string | null;
+  playThrough?: boolean;
+  src?: string;
+  prompt?: string;
+  durationSeconds?: number | null;
+  variants?: number;
+  pick?: number;
+  modelId?: string | null;
+  forceInstrumental?: boolean | null;
+};
 
 export type AudioClipSpec = {
   id: string;
@@ -140,7 +203,7 @@ export type CompositionSpec = {
   posterTime?: number | null;
   voiceover?: VoiceoverConfig;
   audioProviders?: { sfx?: string | null; music?: string | null };
-  scenes: SceneSpec[];
+  timeline: TimelineItemSpec[];
   audioPlan?: AudioPlan;
 };
 
@@ -210,6 +273,8 @@ export type LayerSpec = {
   zIndex?: number; // Base zIndex for layer
   components: ComponentSpec[]; // Components in this layer
 };
+
+export type TimelineItemSpec = SceneSpec | TransitionSpec | MarkSpec | NarrationSpec;
 
 export type VideoFileSpec = {
   compositions: CompositionSpec[];
