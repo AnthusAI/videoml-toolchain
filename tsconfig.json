@@ -5,18 +5,11 @@
     "moduleResolution": "NodeNext",
     "baseUrl": ".",
     "paths": {
-      "babulus": ["src/index.ts"],
-      "babulus/dsl": ["src/dsl/index.ts"],
-      "babulus/*": ["src/*"],
-      "@/*": ["apps/studio-web/*"],
-      "@babulus/shared": ["packages/shared/src/index.ts"],
-      "@babulus/renderer": ["packages/renderer/src/index.ts"],
-      "@videoml/player": ["packages/videoml-player/src/index.ts"],
-      "@videoml/player/react": ["packages/videoml-player/src/react.tsx"],
-      "@videoml/stdlib": ["packages/videoml-stdlib/src/index.ts"],
-      "@videoml/stdlib/dom": ["packages/videoml-stdlib/src/dom/index.ts"],
-      "@videoml/stdlib/react": ["packages/videoml-stdlib/src/react/index.ts"],
-      "@videoml/stdlib/tokens": ["packages/videoml-stdlib/src/tokens/index.ts"]
+      "@videoml/toolchain": ["src/index.ts"],
+      "@videoml/toolchain/dsl": ["src/dsl/index.ts"],
+      "@videoml/toolchain/*": ["src/*"],
+      "@videoml/shared": ["packages/shared/src/index.ts"],
+      "@videoml/renderer": ["packages/renderer/src/index.ts"]
     },
     "strict": true,
     "esModuleInterop": true,
@@ -26,6 +19,6 @@
     "jsx": "react-jsx",
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "packages/**/*.ts", "packages/**/*.tsx", "scripts/**/*.ts"],
+  "include": ["src/**/*.ts", "packages/**/*.ts", "packages/**/*.tsx"],
   "exclude": ["node_modules"]
 }

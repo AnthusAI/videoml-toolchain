@@ -1,6 +1,7 @@
-import { describe, it, expect } from '@jest/globals';
-import { dslToScriptData } from '../dsl-to-script.js';
-import type { CompositionSpec } from 'babulus/dsl';
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { dslToScriptData } from "../dsl-to-script.js";
+import type { CompositionSpec } from "@videoml/toolchain/dsl";
 
 describe('dslToScriptData', () => {
   it('should preserve layers from CompositionSpec', () => {
@@ -72,23 +73,23 @@ describe('dslToScriptData', () => {
     const layers = (scene?.layers ?? []) as Array<any>;
 
     // Check that layers are preserved
-    expect(scenes).toHaveLength(1);
-    expect(layers).toHaveLength(2);
+    assert.equal(scenes.length, 1);
+    assert.equal(layers.length, 2);
 
     // Check first layer
     const layer1 = layers[0];
-    expect(layer1.id).toBe('layer-background');
-    expect(layer1.zIndex).toBe(-10);
-    expect(layer1.components).toHaveLength(1);
-    expect(layer1.components![0].type).toBe('Rectangle');
+    assert.equal(layer1.id, "layer-background");
+    assert.equal(layer1.zIndex, -10);
+    assert.equal(layer1.components.length, 1);
+    assert.equal(layer1.components[0].type, "Rectangle");
 
     // Check second layer
     const layer2 = layers[1];
-    expect(layer2.id).toBe('layer-content');
-    expect(layer2.zIndex).toBe(10);
-    expect(layer2.styles?.opacity).toBe(0.9);
-    expect(layer2.components).toHaveLength(1);
-    expect(layer2.components![0].type).toBe('Title');
+    assert.equal(layer2.id, "layer-content");
+    assert.equal(layer2.zIndex, 10);
+    assert.equal(layer2.styles?.opacity, 0.9);
+    assert.equal(layer2.components.length, 1);
+    assert.equal(layer2.components[0].type, "Title");
   });
 
   it('should handle scenes with no layers', () => {
@@ -124,7 +125,7 @@ describe('dslToScriptData', () => {
     const scenes = result.scenes ?? [];
     const layers = (scenes[0]?.layers ?? []) as Array<any>;
 
-    expect(scenes).toHaveLength(1);
-    expect(layers).toHaveLength(0);
+    assert.equal(scenes.length, 1);
+    assert.equal(layers.length, 0);
   });
 });

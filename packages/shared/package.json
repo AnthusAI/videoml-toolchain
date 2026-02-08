@@ -1,5 +1,5 @@
 {
-  "name": "@babulus/shared",
+  "name": "@videoml/shared",
   "version": "0.0.0",
   "private": true,
   "type": "module",

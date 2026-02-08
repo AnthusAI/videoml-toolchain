@@ -1,5 +1,5 @@
 {
-  "name": "@babulus/renderer",
+  "name": "@videoml/renderer",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -18,7 +18,7 @@
     "./storyboard-render": "./src/storyboard-render.ts"
   },
   "dependencies": {
-    "@babulus/shared": "file:../shared",
+    "@videoml/shared": "file:../shared",
     "animejs": "^4.1.2",
     "d3": "^7.9.0",
     "framer-motion": "^11.0.0",

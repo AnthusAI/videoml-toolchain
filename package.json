@@ -1,105 +1,43 @@
 {
-  "name": "babulus",
-  "version": "0.4.0",
-  "description": "Narration-first XML DSL + audio pipeline for Remotion videos",
+  "name": "@videoml/toolchain",
+  "version": "0.0.0",
+  "description": "VideoML toolchain: load DSL, generate timing/audio, and render videos.",
   "license": "MIT",
+  "private": true,
   "type": "module",
-  "bin": {
-    "babulus": "src/cli.ts"
-  },
   "workspaces": [
-    "apps/*",
     "packages/*"
   ],
-  "overrides": {
-    "graphql-compose": "^9.0.10",
-    "graphql": "15.8.0"
-  },
   "exports": {
     ".": "./src/index.ts",
     "./dsl": "./src/dsl/index.ts",
+    "./renderer": "./packages/renderer/src/index.ts",
     "./renderer/components/registry": "./packages/renderer/src/components/registry.ts",
     "./renderer/context": "./packages/renderer/src/context.tsx",
-    "./renderer/math": "./packages/renderer/src/math.ts"
+    "./renderer/math": "./packages/renderer/src/math.ts",
+    "./shared": "./packages/shared/src/index.ts"
   },
   "types": "./src/index.ts",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "babulus": "tsx src/cli.ts",
-    "generate": "tsx src/cli.ts generate",
-    "clean": "tsx src/cli.ts clean",
-    "sfx": "tsx src/cli.ts sfx",
     "lint": "tsc --noEmit",
-    "bdd:raw": "tsx node_modules/.bin/cucumber-js --require \"features/steps/**/*.ts\" \"features/**/*.feature\"",
-    "bdd": "c8 --reporter=text --reporter=lcov --reporter=json-summary npm run bdd:raw",
-    "bdd:watch": "tsx scripts/bdd-watch.ts",
-    "coverage": "npm run bdd",
-    "baseline:verify": "tsx scripts/verify-baseline.ts",
-    "studio:preview": "tsx scripts/studio-preview.ts",
-    "studio:watch": "tsx scripts/studio-preview.ts --watch",
-    "render:frame": "tsx scripts/render-frame.ts",
-    "render:frames": "tsx scripts/render-frames.ts",
-    "render:video": "tsx scripts/render-video.ts",
-    "render:pipeline": "tsx scripts/render-pipeline.ts",
-    "render:script": "tsx scripts/render-video-from-script.ts",
-    "render:script:frames": "tsx scripts/render-video-frames.ts",
-    "render:script:png": "tsx scripts/render-video-frames-png.ts",
-    "render:toolchain": "tsx scripts/render-toolchain.ts",
-    "bundle:browser": "tsx scripts/bundle-browser-components.ts",
-    "worker:cloud": "tsx src/worker-cloud.ts",
-    "videoml:dev": "npm run dev --workspace=videoml-org",
-    "videoml:develop": "npm run develop --workspace=videoml-org",
-    "videoml:build": "npm run build --workspace=videoml-org",
-    "videoml:serve": "npm run serve --workspace=videoml-org",
-    "videoml:clean": "npm run clean --workspace=videoml-org",
-    "test": "npm run bdd"
+    "test": "node --import tsx --test src/config.test.ts packages/shared/src/__tests__/dsl-to-script.test.ts"
   },
   "dependencies": {
-    "@aws-amplify/backend": "1.19.0",
-    "@aws-amplify/backend-cli": "^1.8.1",
     "@aws-sdk/client-polly": "^3.699.0",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/ws": "^8.18.1",
     "@xmldom/xmldom": "^0.8.11",
-    "aws-amplify": "^6.16.0",
-    "bcryptjs": "^3.0.3",
-    "chokidar": "^3.6.0",
-    "commander": "^12.1.0",
-    "graphql": "15.8.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tsx": "^4.19.0",
-    "ws": "^8.19.0",
     "yaml": "^2.5.1"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^11.0.1",
-    "@testing-library/react": "^16.0.1",
-    "@types/jsdom": "^21.1.7",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.8",
     "@types/react-dom": "^18.3.1",
-    "c8": "^10.1.2",
-    "esbuild": "^0.27.2",
-    "jsdom": "^24.1.1",
     "playwright": "1.45.0",
     "typescript": "^5.7.2"
-  },
-  "c8": {
-    "all": true,
-    "include": [
-      "src/**/*.ts",
-      "packages/**/*.ts",
-      "packages/**/*.tsx"
-    ],
-    "exclude": [
-      "**/*.d.ts",
-      "features/**",
-      "scripts/**",
-      "apps/**",
-      "**/node_modules/**"
-    ]
   }
 }

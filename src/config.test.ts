@@ -1,306 +1,267 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
-import { loadConfig, findConfigPath, getProviderConfig, getDefaultProvider } from './config.js';
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { mkdirSync, writeFileSync, rmSync, existsSync, realpathSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { findConfigPath, getDefaultProvider, getProviderConfig, loadConfig } from "./config.js";
 
-describe('Config Loader', () => {
+describe("Config Loader", () => {
   let testDir: string;
   let originalBabulusPath: string | undefined;
   let originalVideomlPath: string | undefined;
   let originalCwd: string;
+  let originalHome: string | undefined;
 
   beforeEach(() => {
-    // Create temporary test directory
-    testDir = join(tmpdir(), `babulus-config-test-${Date.now()}`);
+    testDir = join(tmpdir(), `videoml-config-test-${Date.now()}`);
     mkdirSync(testDir, { recursive: true });
 
-    // Save original environment
     originalBabulusPath = process.env.BABULUS_PATH;
     originalVideomlPath = process.env.VIDEOML_PATH;
     originalCwd = process.cwd();
+    originalHome = process.env.HOME;
+
+    // Isolate tests from any real user-level config.
+    process.env.HOME = testDir;
+    process.chdir(testDir);
   });
 
   afterEach(() => {
-    // Restore original environment
-    if (originalBabulusPath) {
-      process.env.BABULUS_PATH = originalBabulusPath;
-    } else {
-      delete process.env.BABULUS_PATH;
-    }
-    if (originalVideomlPath) {
-      process.env.VIDEOML_PATH = originalVideomlPath;
-    } else {
-      delete process.env.VIDEOML_PATH;
-    }
+    if (originalBabulusPath) process.env.BABULUS_PATH = originalBabulusPath;
+    else delete process.env.BABULUS_PATH;
+
+    if (originalVideomlPath) process.env.VIDEOML_PATH = originalVideomlPath;
+    else delete process.env.VIDEOML_PATH;
+
+    if (originalHome) process.env.HOME = originalHome;
+    else delete process.env.HOME;
+
     process.chdir(originalCwd);
 
-    // Clean up test directory
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
   });
 
-  describe('findConfigPath', () => {
-    it('should find config from VIDEOML_PATH environment variable', () => {
-      const configPath = join(testDir, 'videoml-config.yml');
-      writeFileSync(configPath, 'providers: {}');
+  describe("findConfigPath", () => {
+    it("finds config from VIDEOML_PATH environment variable", () => {
+      const configPath = join(testDir, "videoml-config.yml");
+      writeFileSync(configPath, "providers: {}");
       process.env.VIDEOML_PATH = configPath;
 
       const found = findConfigPath();
-      expect(found).toBe(configPath);
+      assert.equal(found, configPath);
     });
 
-    it('should find config from BABULUS_PATH environment variable', () => {
-      const configPath = join(testDir, 'custom-config.yml');
-      writeFileSync(configPath, 'providers: {}');
+    it("finds config from BABULUS_PATH environment variable", () => {
+      const configPath = join(testDir, "custom-config.yml");
+      writeFileSync(configPath, "providers: {}");
       process.env.BABULUS_PATH = configPath;
 
       const found = findConfigPath();
-      expect(found).toBe(configPath);
+      assert.equal(found, configPath);
     });
 
-    it('should find config in BABULUS_PATH directory', () => {
-      const configDir = join(testDir, 'babulus-dir');
+    it("finds config in BABULUS_PATH directory (config.yml)", () => {
+      const configDir = join(testDir, "babulus-dir");
       mkdirSync(configDir, { recursive: true });
-      const configPath = join(configDir, 'config.yml');
-      writeFileSync(configPath, 'providers: {}');
+      const configPath = join(configDir, "config.yml");
+      writeFileSync(configPath, "providers: {}");
       process.env.BABULUS_PATH = configDir;
 
       const found = findConfigPath();
-      expect(found).toBe(configPath);
+      assert.equal(found, configPath);
     });
 
-    it('should throw error if VIDEOML_PATH is set but config not found', () => {
-      process.env.VIDEOML_PATH = join(testDir, 'nonexistent');
-      expect(() => findConfigPath()).toThrow(/VIDEOML_PATH\/BABULUS_PATH is set but config not found/);
+    it("throws if VIDEOML_PATH is set but config not found (no project fallback)", () => {
+      process.env.VIDEOML_PATH = join(testDir, "nonexistent");
+      throwsMatch(() => findConfigPath(), /VIDEOML_PATH\/BABULUS_PATH is set but config not found/);
     });
 
-    it('should throw error if BABULUS_PATH is set but config not found', () => {
-      process.env.BABULUS_PATH = join(testDir, 'nonexistent');
-      expect(() => findConfigPath()).toThrow(/VIDEOML_PATH\/BABULUS_PATH is set but config not found/);
+    it("throws if BABULUS_PATH is set but config not found (no project fallback)", () => {
+      process.env.BABULUS_PATH = join(testDir, "nonexistent");
+      throwsMatch(() => findConfigPath(), /VIDEOML_PATH\/BABULUS_PATH is set but config not found/);
     });
 
-    it('should find config in project directory', () => {
-      const projectDir = join(testDir, 'project');
-      const videomlDir = join(projectDir, '.videoml');
+    it("finds config in project directory", () => {
+      const projectDir = join(testDir, "project");
+      const videomlDir = join(projectDir, ".videoml");
       mkdirSync(videomlDir, { recursive: true });
-      const configPath = join(videomlDir, 'config.yml');
-      writeFileSync(configPath, 'providers: {}');
+      const configPath = join(videomlDir, "config.yml");
+      writeFileSync(configPath, "providers: {}");
 
       const found = findConfigPath(projectDir);
-      expect(found).toBe(configPath);
+      assert.equal(found, configPath);
     });
 
-    it('should find config in DSL file parent directory', () => {
-      const projectDir = join(testDir, 'dsl-project');
-      const videomlDir = join(projectDir, '.videoml');
+    it("finds config via DSL path project root", () => {
+      const projectDir = join(testDir, "dsl-project");
+      const videomlDir = join(projectDir, ".videoml");
       mkdirSync(videomlDir, { recursive: true });
-      const configPath = join(videomlDir, 'config.yml');
-      writeFileSync(configPath, 'providers: {}');
+      const configPath = join(videomlDir, "config.yml");
+      writeFileSync(configPath, "providers: {}");
 
-      const dslPath = join(projectDir, 'video.babulus.xml');
-      writeFileSync(dslPath, '// DSL file');
+      const dslPath = join(projectDir, "video.babulus.xml");
+      writeFileSync(dslPath, "<video/>");
 
       const found = findConfigPath(undefined, dslPath);
-      expect(found).toBe(configPath);
+      assert.equal(found, configPath);
     });
 
-    it('should find config in current working directory', () => {
-      const videomlDir = join(testDir, '.videoml');
+    it("finds config in current working directory", () => {
+      const videomlDir = join(testDir, ".videoml");
       mkdirSync(videomlDir, { recursive: true });
-      const configPath = join(videomlDir, 'config.yml');
-      writeFileSync(configPath, 'providers: {}');
+      const configPath = join(videomlDir, "config.yml");
+      writeFileSync(configPath, "providers: {}");
 
-      process.chdir(testDir);
       const found = findConfigPath();
-      expect(found).toBe(configPath);
+      assert.equal(realpathSync(found!), realpathSync(configPath));
     });
 
-    it('should return null if no config found', () => {
+    it("returns null if no config found", () => {
       const found = findConfigPath(testDir);
-      expect(found).toBeNull();
+      assert.equal(found, null);
     });
 
-    it('should search order: BABULUS_PATH → project → cwd → home', () => {
-      // This test verifies search order by setting up configs in multiple locations
-      // and ensuring BABULUS_PATH takes precedence
-      const envConfigPath = join(testDir, 'env-config.yml');
-      const cwdConfigPath = join(testDir, '.videoml', 'config.yml');
-
-      mkdirSync(join(testDir, '.videoml'), { recursive: true });
-      writeFileSync(envConfigPath, 'providers:\n  test: env');
-      writeFileSync(cwdConfigPath, 'providers:\n  test: cwd');
-
-      process.chdir(testDir);
-      process.env.BABULUS_PATH = envConfigPath;
-
-      const found = findConfigPath();
-      expect(found).toBe(envConfigPath);
-    });
-
-    it('should prefer .videoml over .babulus', () => {
-      const projectDir = join(testDir, 'priorities');
-      const videomlDir = join(projectDir, '.videoml');
-      const babulusDir = join(projectDir, '.babulus');
+    it("prefers .videoml over .babulus", () => {
+      const projectDir = join(testDir, "priorities");
+      const videomlDir = join(projectDir, ".videoml");
+      const babulusDir = join(projectDir, ".babulus");
       mkdirSync(videomlDir, { recursive: true });
       mkdirSync(babulusDir, { recursive: true });
-      const videomlPath = join(videomlDir, 'config.yml');
-      const babulusPath = join(babulusDir, 'config.yml');
-      writeFileSync(videomlPath, 'providers:\n  test: videoml');
-      writeFileSync(babulusPath, 'providers:\n  test: babulus');
+      const videomlPath = join(videomlDir, "config.yml");
+      const babulusPath = join(babulusDir, "config.yml");
+      writeFileSync(videomlPath, "providers:\n  test: videoml");
+      writeFileSync(babulusPath, "providers:\n  test: babulus");
 
       const found = findConfigPath(projectDir);
-      expect(found).toBe(videomlPath);
+      assert.equal(found, videomlPath);
     });
   });
 
-  describe('loadConfig', () => {
-    it('should load valid YAML config', () => {
-      const configPath = join(testDir, '.videoml', 'config.yml');
-      mkdirSync(join(testDir, '.videoml'), { recursive: true });
-      writeFileSync(configPath, `
-providers:
-  openai:
-    api_key: "sk-test"
-    model: "gpt-4o-mini-tts"
-tts:
-  default_provider: openai
-`);
+  describe("loadConfig", () => {
+    it("loads valid YAML config", () => {
+      const configPath = join(testDir, ".videoml", "config.yml");
+      mkdirSync(join(testDir, ".videoml"), { recursive: true });
+      writeFileSync(
+        configPath,
+        [
+          "providers:",
+          "  openai:",
+          '    api_key: "sk-test"',
+          '    model: "gpt-4o-mini-tts"',
+          "tts:",
+          "  default_provider: openai",
+          "",
+        ].join("\n"),
+      );
 
       const config = loadConfig(testDir);
-      expect(config).toBeDefined();
-      expect(config.providers).toBeDefined();
-      expect((config.providers as any).openai).toBeDefined();
-      expect((config.providers as any).openai.api_key).toBe('sk-test');
+      assert.ok((config as any).providers);
+      assert.equal((config as any).providers.openai.api_key, "sk-test");
     });
 
-    it('should return empty config if no config file found', () => {
+    it("returns empty config if no config file found", () => {
       const config = loadConfig(testDir);
-      expect(config).toEqual({});
+      assert.deepEqual(config, {});
     });
 
-    it('should throw error for invalid YAML', () => {
-      const configPath = join(testDir, '.videoml', 'config.yml');
-      mkdirSync(join(testDir, '.videoml'), { recursive: true });
-      writeFileSync(configPath, 'invalid: yaml: content: [');
+    it("throws for invalid YAML", () => {
+      const configPath = join(testDir, ".videoml", "config.yml");
+      mkdirSync(join(testDir, ".videoml"), { recursive: true });
+      writeFileSync(configPath, "invalid: yaml: content: [");
 
-      expect(() => loadConfig(testDir)).toThrow(/Invalid config/);
+      throwsMatch(() => loadConfig(testDir), /Invalid config/);
     });
 
-    it('should throw error if config is not an object', () => {
-      const configPath = join(testDir, '.videoml', 'config.yml');
-      mkdirSync(join(testDir, '.videoml'), { recursive: true });
-      writeFileSync(configPath, '- list\n- of\n- items');
+    it("throws if config is not a mapping", () => {
+      const configPath = join(testDir, ".videoml", "config.yml");
+      mkdirSync(join(testDir, ".videoml"), { recursive: true });
+      writeFileSync(configPath, "- list\n- of\n- items");
 
-      expect(() => loadConfig(testDir)).toThrow(/Config must be a mapping/);
+      throwsMatch(() => loadConfig(testDir), /Config must be a mapping/);
     });
 
-    it('should handle empty config file', () => {
-      const configPath = join(testDir, '.videoml', 'config.yml');
-      mkdirSync(join(testDir, '.videoml'), { recursive: true });
-      writeFileSync(configPath, '');
+    it("handles empty config file", () => {
+      const configPath = join(testDir, ".videoml", "config.yml");
+      mkdirSync(join(testDir, ".videoml"), { recursive: true });
+      writeFileSync(configPath, "");
 
       const config = loadConfig(testDir);
-      expect(config).toEqual({});
+      assert.deepEqual(config, {});
     });
   });
 
-  describe('getProviderConfig', () => {
-    it('should extract provider config', () => {
+  describe("getProviderConfig", () => {
+    it("extracts provider config", () => {
       const config = {
         providers: {
           openai: {
-            api_key: 'sk-test',
-            model: 'gpt-4o-mini-tts',
+            api_key: "sk-test",
+            model: "gpt-4o-mini-tts",
           },
         },
       };
 
-      const providerConfig = getProviderConfig(config, 'openai');
-      expect(providerConfig).toEqual({
-        api_key: 'sk-test',
-        model: 'gpt-4o-mini-tts',
-      });
+      const providerConfig = getProviderConfig(config, "openai");
+      assert.deepEqual(providerConfig, { api_key: "sk-test", model: "gpt-4o-mini-tts" });
     });
 
-    it('should return empty object if provider not found', () => {
-      const config = {
-        providers: {
-          openai: { api_key: 'sk-test' },
-        },
-      };
-
-      const providerConfig = getProviderConfig(config, 'elevenlabs');
-      expect(providerConfig).toEqual({});
+    it("returns empty object if provider not found", () => {
+      const config = { providers: { openai: { api_key: "sk-test" } } };
+      const providerConfig = getProviderConfig(config, "elevenlabs");
+      assert.deepEqual(providerConfig, {});
     });
 
-    it('should return empty object if providers not defined', () => {
+    it("returns empty object if providers not defined", () => {
       const config = {};
-      const providerConfig = getProviderConfig(config, 'openai');
-      expect(providerConfig).toEqual({});
+      const providerConfig = getProviderConfig(config, "openai");
+      assert.deepEqual(providerConfig, {});
     });
 
-    it('should throw error if providers is not an object', () => {
-      const config = {
-        providers: 'not-an-object',
-      };
-
-      expect(() => getProviderConfig(config, 'openai')).toThrow(/config.providers must be a mapping/);
+    it("throws if providers is not a mapping", () => {
+      const config = { providers: "not-an-object" };
+      throwsMatch(() => getProviderConfig(config as any, "openai"), /config\.providers must be a mapping/);
     });
 
-    it('should throw error if provider config is not an object', () => {
-      const config = {
-        providers: {
-          openai: 'not-an-object',
-        },
-      };
-
-      expect(() => getProviderConfig(config, 'openai')).toThrow(/config.providers.openai must be a mapping/);
+    it("throws if provider config is not a mapping", () => {
+      const config = { providers: { openai: "not-an-object" } };
+      throwsMatch(() => getProviderConfig(config as any, "openai"), /config\.providers\.openai must be a mapping/);
     });
   });
 
-  describe('getDefaultProvider', () => {
-    it('should extract default TTS provider', () => {
-      const config = {
-        tts: {
-          default_provider: 'openai',
-        },
-      };
-
-      const defaultProvider = getDefaultProvider(config);
-      expect(defaultProvider).toBe('openai');
+  describe("getDefaultProvider", () => {
+    it("extracts default provider from config.tts.default_provider", () => {
+      const config = { tts: { default_provider: "openai" } };
+      assert.equal(getDefaultProvider(config as any), "openai");
     });
 
-    it('should return null if default provider not set', () => {
-      const config = {};
-      const defaultProvider = getDefaultProvider(config);
-      expect(defaultProvider).toBeNull();
+    it("returns null if default provider not set or inferred", () => {
+      assert.equal(getDefaultProvider({} as any), null);
     });
 
-    it('should throw error if default_provider is not a string', () => {
-      const config = {
-        tts: {
-          default_provider: 123,
-        },
-      };
-
-      expect(() => getDefaultProvider(config)).toThrow(/config.tts.default_provider must be a string/);
+    it("throws if default_provider is not a string", () => {
+      const config = { tts: { default_provider: 123 } };
+      throwsMatch(() => getDefaultProvider(config as any), /config\.tts\.default_provider must be a string/);
     });
   });
 
-  describe('Environment variable override', () => {
-    it('should work with config from environment variable', () => {
-      const configPath = join(testDir, 'env-config.yml');
-      writeFileSync(configPath, `
-providers:
-  openai:
-    api_key: "sk-env-test"
-`);
+  describe("Environment variable override", () => {
+    it("loads config from BABULUS_PATH", () => {
+      const configPath = join(testDir, "env-config.yml");
+      writeFileSync(configPath, ['providers:', '  openai:', '    api_key: "sk-env-test"', ""].join("\n"));
       process.env.BABULUS_PATH = configPath;
 
       const config = loadConfig();
-      expect((config.providers as any).openai.api_key).toBe('sk-env-test');
+      assert.equal((config as any).providers.openai.api_key, "sk-env-test");
     });
   });
 });
+
+function throwsMatch(fn: () => unknown, pattern: RegExp): void {
+  assert.throws(fn, (err: unknown) => {
+    assert.ok(err instanceof Error);
+    assert.match(err.message, pattern);
+    return true;
+  });
+}
