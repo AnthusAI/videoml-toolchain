@@ -12,7 +12,8 @@
     "packages/*"
   ],
   "overrides": {
-    "graphql-compose": "^9.0.10"
+    "graphql-compose": "^9.0.10",
+    "graphql": "^16.12.0"
   },
   "exports": {
     ".": "./src/index.ts",
