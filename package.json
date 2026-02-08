@@ -12,7 +12,6 @@
     "packages/*"
   ],
   "overrides": {
-    "graphql": "15.10.1",
     "graphql-compose": "^9.0.10"
   },
   "exports": {
@@ -49,6 +48,11 @@
     "render:toolchain": "tsx scripts/render-toolchain.ts",
     "bundle:browser": "tsx scripts/bundle-browser-components.ts",
     "worker:cloud": "tsx src/worker-cloud.ts",
+    "videoml:dev": "npm run dev --workspace=videoml-org",
+    "videoml:develop": "npm run develop --workspace=videoml-org",
+    "videoml:build": "npm run build --workspace=videoml-org",
+    "videoml:serve": "npm run serve --workspace=videoml-org",
+    "videoml:clean": "npm run clean --workspace=videoml-org",
     "test": "npm run bdd"
   },
   "dependencies": {
@@ -62,7 +66,7 @@
     "bcryptjs": "^3.0.3",
     "chokidar": "^3.6.0",
     "commander": "^12.1.0",
-    "graphql": "15.10.1",
+    "graphql": "^16.12.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tsx": "^4.19.0",
