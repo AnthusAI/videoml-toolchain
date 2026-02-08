@@ -1,8 +1,8 @@
-import { TitleComponent } from "./TitleComponent.tsx";
-import { SubtitleComponent } from "./SubtitleComponent.tsx";
-import { ProgressBarComponent } from "./ProgressBarComponent.tsx";
-import { RectangleComponent } from "./RectangleComponent.tsx";
-import { BackgroundComponent } from "./BackgroundComponent.tsx";
+import { TitleComponent } from "./TitleComponent.js";
+import { SubtitleComponent } from "./SubtitleComponent.js";
+import { ProgressBarComponent } from "./ProgressBarComponent.js";
+import { RectangleComponent } from "./RectangleComponent.js";
+import { BackgroundComponent } from "./BackgroundComponent.js";
 import { ColorThemeDemo } from "./demo/ColorThemeDemo.js";
 import { ContentLayoutDemo } from "./demo/ContentLayoutDemo.js";
 import { PlaceholderPanel } from "./demo/PlaceholderPanel.js";

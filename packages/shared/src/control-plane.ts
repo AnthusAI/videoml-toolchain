@@ -19,8 +19,8 @@ import type {
   StoryboardVersion,
   Video,
   PublishedVideo, // Add this
-} from "./index.ts";
-import { assertOrgScope } from "./org-scope.ts";
+} from "./index.js";
+import { assertOrgScope } from "./org-scope.js";
 import {
   buildGenerationRunRecord,
   buildAssetRecord,
@@ -60,8 +60,8 @@ import {
   type CreateVideoInput,
   type CreatePublishedVideoInput, // Add this
   type RecordContext,
-} from "./records.ts";
-import { updateVideoStatus, type VideoStatus } from "./video-status.ts";
+} from "./records.js";
+import { updateVideoStatus, type VideoStatus } from "./video-status.js";
 
 export type ControlPlaneStore = {
   orgs: Org[];

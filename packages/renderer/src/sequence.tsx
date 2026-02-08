@@ -1,5 +1,5 @@
 import React from "react";
-import { RendererProvider, useRenderContext } from "./context.tsx";
+import { RendererProvider, useRenderContext } from "./context.js";
 
 export type SequenceProps = {
   from?: number;

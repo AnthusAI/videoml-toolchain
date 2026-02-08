@@ -1,4 +1,4 @@
-import type { ScriptCue } from '../shared.ts';
+import type { ScriptCue } from '../shared.js';
 
 export const cueStartFrame = (cue: ScriptCue | null | undefined, fps: number): number => {
   if (!cue) return 0;

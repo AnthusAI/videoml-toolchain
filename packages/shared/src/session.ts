@@ -1,6 +1,6 @@
-import type { OrgMemberRole } from "./index.ts";
-import { can, type OrgPermission } from "./rbac.ts";
-import { requireOrgAccess, resolveActiveOrgId, type OrgMembership } from "./tenancy.ts";
+import type { OrgMemberRole } from "./index.js";
+import { can, type OrgPermission } from "./rbac.js";
+import { requireOrgAccess, resolveActiveOrgId, type OrgMembership } from "./tenancy.js";
 
 export type ActiveSession = {
   userId: string;

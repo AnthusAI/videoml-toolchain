@@ -1,4 +1,4 @@
-import { assertSameOrg } from "./tenancy.ts";
+import { assertSameOrg } from "./tenancy.js";
 
 export type OrgScopedInput = {
   orgId?: string | null;

@@ -1,4 +1,4 @@
-import type { SemanticMarkup } from "../../../../src/dsl/types.ts";
+import type { SemanticMarkup } from "../../../../src/dsl/types.js";
 
 /**
  * Cascaded markup includes merged values after applying the cascade.

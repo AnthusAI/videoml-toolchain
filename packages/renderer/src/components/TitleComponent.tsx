@@ -1,6 +1,6 @@
 import React from "react";
-import type { ScriptScene } from "../shared.ts";
-import type { CascadedStyles } from "../styles/cascade.ts";
+import type { ScriptScene } from "../shared.js";
+import type { CascadedStyles } from "../styles/cascade.js";
 import { TextEffectsComponent } from "./text/TextEffectsComponent.js";
 import type { TextEffectConfig } from "../engines/text-effects.js";
 

@@ -23,9 +23,9 @@ import type {
   Video,
   VideoStatus,
   PublishedVideo, // Add this
-} from "./index.ts";
-import { applyOrgScope } from "./org-scope.ts";
-import { buildAssetKey, buildGenerationArtifactKeys, buildRenderArtifactKeys } from "./storage.ts";
+} from "./index.js";
+import { applyOrgScope } from "./org-scope.js";
+import { buildAssetKey, buildGenerationArtifactKeys, buildRenderArtifactKeys } from "./storage.js";
 
 export type CreateProjectInput = {
   orgId?: string | null;

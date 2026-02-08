@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo } from "react";
-import { frameToTimeMs } from "./math.ts";
+import { frameToTimeMs } from "./math.js";
 
 export type VideoConfig = {
   fps: number;

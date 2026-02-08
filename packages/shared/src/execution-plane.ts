@@ -4,8 +4,8 @@ import type {
   GenerationRun,
   RenderRun,
   JobStatus,
-} from "./index.ts";
-import { assertSameOrg } from "./tenancy.ts";
+} from "./index.js";
+import { assertSameOrg } from "./tenancy.js";
 import {
   claimJobWithEvent,
   createGenerationRun,
@@ -17,14 +17,14 @@ import {
   setGenerationRunStatus,
   setJobStatus,
   setRenderRunStatus,
-} from "./control-plane.ts";
+} from "./control-plane.js";
 import type {
   CreateGenerationRunInput,
   CreateJobEventInput,
   CreateRenderRunInput,
   CreateUsageEventInput,
   RecordContext,
-} from "./records.ts";
+} from "./records.js";
 
 export type ExecutionResult = {
   job: Job;

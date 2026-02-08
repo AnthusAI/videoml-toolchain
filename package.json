@@ -1,29 +1,63 @@
 {
   "name": "@videoml/toolchain",
-  "version": "0.0.0",
+  "version": "0.0.0-semantic-release",
   "description": "VideoML toolchain: load DSL, generate timing/audio, and render videos.",
   "license": "MIT",
-  "private": true,
   "type": "module",
   "workspaces": [
     "packages/*"
   ],
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./dsl": "./src/dsl/index.ts",
-    "./renderer": "./packages/renderer/src/index.ts",
-    "./renderer/components/registry": "./packages/renderer/src/components/registry.ts",
-    "./renderer/context": "./packages/renderer/src/context.tsx",
-    "./renderer/math": "./packages/renderer/src/math.ts",
-    "./shared": "./packages/shared/src/index.ts"
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./dsl": {
+      "types": "./dist/src/dsl/index.d.ts",
+      "default": "./dist/src/dsl/index.js"
+    },
+    "./renderer": {
+      "types": "./dist/packages/renderer/src/index.d.ts",
+      "default": "./dist/packages/renderer/src/index.js"
+    },
+    "./renderer/components/registry": {
+      "types": "./dist/packages/renderer/src/components/registry.d.ts",
+      "default": "./dist/packages/renderer/src/components/registry.js"
+    },
+    "./renderer/context": {
+      "types": "./dist/packages/renderer/src/context.d.ts",
+      "default": "./dist/packages/renderer/src/context.js"
+    },
+    "./renderer/math": {
+      "types": "./dist/packages/renderer/src/math.d.ts",
+      "default": "./dist/packages/renderer/src/math.js"
+    },
+    "./shared": {
+      "types": "./dist/packages/shared/src/index.d.ts",
+      "default": "./dist/packages/shared/src/index.js"
+    }
   },
-  "types": "./src/index.ts",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "lint": "tsc --noEmit",
     "test": "node --import tsx --test src/config.test.ts packages/shared/src/__tests__/dsl-to-script.test.ts"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VideoML/toolchain.git"
   },
   "dependencies": {
     "@aws-sdk/client-polly": "^3.699.0",
@@ -34,10 +68,17 @@
     "yaml": "^2.5.1"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^12.0.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^10.0.0",
+    "@semantic-release/npm": "^12.0.0",
+    "@semantic-release/release-notes-generator": "^13.0.0",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.8",
     "@types/react-dom": "^18.3.1",
     "playwright": "1.45.0",
+    "semantic-release": "^24.2.0",
     "typescript": "^5.7.2"
   }
 }

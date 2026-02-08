@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { clamp } from "./math.ts";
-import { RendererProvider, type VideoConfig } from "./context.tsx";
+import { clamp } from "./math.js";
+import { RendererProvider, type VideoConfig } from "./context.js";
 
 export type PlayerProps<T extends Record<string, unknown> = Record<string, unknown>> = {
   component: React.ComponentType<T>;

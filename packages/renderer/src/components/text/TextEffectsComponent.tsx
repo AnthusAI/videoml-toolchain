@@ -1,4 +1,4 @@
-import type { ScriptCue } from '../../shared.ts';
+import type { ScriptCue } from '../../shared.js';
 import { AnimeJsBase, type AnimeJsBaseProps } from '../../engines/AnimeJsBase.js';
 import {
   effectToAnimeProps,

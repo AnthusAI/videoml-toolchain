@@ -1,7 +1,7 @@
 import React from 'react';
 import { applyTransition, type TransitionConfig } from '../../animation/transitions.js';
 import { easeOutBounce } from '../../animation/easing.js';
-import type { ScriptCue } from '../../shared.ts';
+import type { ScriptCue } from '../../shared.js';
 import { TextEffectsComponent } from '../text/TextEffectsComponent.js';
 import type { TextEffectConfig } from '../../engines/text-effects.js';
 

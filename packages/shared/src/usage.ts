@@ -1,4 +1,4 @@
-import type { UsageEvent } from "./index.ts";
+import type { UsageEvent } from "./index.js";
 
 export type UsageSummary = {
   tokens: number;

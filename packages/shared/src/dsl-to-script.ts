@@ -13,7 +13,7 @@ import type {
   LayerSpec,
   ComponentSpec,
   PauseSpec,
-} from "../../../src/dsl/index.ts";
+} from "../../../src/dsl/index.js";
 import type { ScriptData, ScriptScene, ScriptCue, ScriptSegment } from "./video.js";
 
 /**

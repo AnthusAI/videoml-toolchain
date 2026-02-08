@@ -1,4 +1,4 @@
-import type { JobEvent } from "./index.ts";
+import type { JobEvent } from "./index.js";
 
 export type JobEventSummary = {
   jobId: string;

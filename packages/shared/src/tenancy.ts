@@ -1,4 +1,4 @@
-import type { OrgMemberRole } from "./index.ts";
+import type { OrgMemberRole } from "./index.js";
 
 export type OrgMembership = {
   orgId: string;

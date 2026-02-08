@@ -1,6 +1,6 @@
 import React from 'react';
 import type p5 from 'p5';
-import { RendererContext, type RenderContext } from '../context.tsx';
+import { RendererContext, type RenderContext } from '../context.js';
 
 export type P5SketchProps = {
   frame?: number;

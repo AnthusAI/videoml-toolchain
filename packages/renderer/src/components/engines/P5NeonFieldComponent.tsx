@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCurrentFrame, useVideoConfig } from '../../context.tsx';
+import { useCurrentFrame, useVideoConfig } from '../../context.js';
 
 export type P5NeonFieldProps = {
   intensity?: number;

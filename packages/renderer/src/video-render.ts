@@ -1,5 +1,5 @@
-import type { ScriptData } from "./shared.ts";
-import { deriveVideoConfig, type TimelineData } from "./shared.ts";
+import type { ScriptData } from "./shared.js";
+import { deriveVideoConfig, type TimelineData } from "./shared.js";
 import { renderVideo, type RenderVideoOptions, type RenderVideoResult } from "./pipeline.js";
 import { ComposableRenderer } from "./ComposableRenderer.js";
 

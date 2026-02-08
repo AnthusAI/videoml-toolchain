@@ -1,4 +1,4 @@
-import type { Video, VideoStatus } from "./index.ts";
+import type { Video, VideoStatus } from "./index.js";
 
 export type { VideoStatus };
 

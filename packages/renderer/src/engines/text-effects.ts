@@ -1,4 +1,4 @@
-import type { ScriptCue } from '../shared.ts';
+import type { ScriptCue } from '../shared.js';
 import { cueStartFrame } from './timing.js';
 
 export type TextEffectUnit = 'chars' | 'words' | 'lines';

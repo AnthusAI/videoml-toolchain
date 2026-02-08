@@ -1,6 +1,6 @@
 import React from 'react';
 import gsapImport from 'gsap';
-import type { ScriptCue } from '../../shared.ts';
+import type { ScriptCue } from '../../shared.js';
 import { TextEffectsComponent } from '../text/TextEffectsComponent.js';
 import type { TextEffectConfig } from '../../engines/text-effects.js';
 

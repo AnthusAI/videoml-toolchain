@@ -1,11 +1,11 @@
 import React, { useMemo } from "react";
 import gsapImport from "gsap";
-import { getActiveCue, getActiveScene, type ScriptData } from "./shared.ts";
-import { useCurrentFrame, useVideoConfig } from "./context.tsx";
-import { getComponent } from "./components/registry.ts";
-import type { ComponentSpec, LayerSpec, VisualStyles, SemanticMarkup } from "../../../src/dsl/types.ts";
-import { cascadeStyles, type CascadedStyles } from "./styles/cascade.ts";
-import { cascadeMarkup, type CascadedMarkup } from "./markup/cascade.ts";
+import { getActiveCue, getActiveScene, type ScriptData } from "./shared.js";
+import { useCurrentFrame, useVideoConfig } from "./context.js";
+import { getComponent } from "./components/registry.js";
+import type { ComponentSpec, LayerSpec, VisualStyles, SemanticMarkup } from "../../../src/dsl/types.js";
+import { cascadeStyles, type CascadedStyles } from "./styles/cascade.js";
+import { cascadeMarkup, type CascadedMarkup } from "./markup/cascade.js";
 
 export type ComposableRendererProps = {
   script: ScriptData;

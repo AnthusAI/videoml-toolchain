@@ -1,5 +1,5 @@
 import React from "react";
-import type { CascadedStyles } from "../styles/cascade.ts";
+import type { CascadedStyles } from "../styles/cascade.js";
 
 export type ProgressBarProps = {
   position?: "top" | "bottom";

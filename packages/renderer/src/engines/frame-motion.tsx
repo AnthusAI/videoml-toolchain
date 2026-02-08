@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useCurrentFrame, useVideoConfig } from '../context.tsx';
-import { clamp, interpolate, spring, type SpringConfig, type EasingFn } from '../math.ts';
+import { useCurrentFrame, useVideoConfig } from '../context.js';
+import { clamp, interpolate, spring, type SpringConfig, type EasingFn } from '../math.js';
 import { clamp01 } from './utils.js';
 
 export type FrameProgressOptions = {

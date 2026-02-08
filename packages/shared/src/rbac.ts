@@ -1,4 +1,4 @@
-import type { OrgMemberRole, UsageVisibilityMode } from "./index.ts";
+import type { OrgMemberRole, UsageVisibilityMode } from "./index.js";
 
 export type OrgPermission =
   | "org:read"
