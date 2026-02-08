@@ -13,6 +13,7 @@ export type ComposableRendererProps = {
   liveMode?: boolean;
 };
 
+
 function getScriptDuration(script: ScriptData): number {
   const metaDuration = script.meta?.durationSeconds ?? 0;
   const sceneEnds = (script.scenes ?? []).map((scene: { endSec?: number | null }) => scene.endSec ?? 0);

@@ -1,11 +1,13 @@
 import React from 'react';
 import type p5 from 'p5';
+import { RendererContext, type RenderContext } from '../context.tsx';
 
 export type P5SketchProps = {
   frame?: number;
   fps?: number;
   videoWidth?: number;
   videoHeight?: number;
+  timeSec?: number;
   style?: React.CSSProperties;
   className?: string;
   dataEngine?: string;
@@ -14,12 +16,17 @@ export type P5SketchProps = {
 type SketchSize = { width: number; height: number };
 
 export abstract class P5SketchBase<P extends P5SketchProps = P5SketchProps> extends React.Component<P> {
+  static contextType = RendererContext;
+  declare context: RenderContext | null;
+
   protected containerRef = React.createRef<HTMLDivElement>();
   protected p5Instance: p5 | null = null;
   private isClient = typeof window !== 'undefined';
   private latestFrame = 0;
   private latestFps = 30;
   private latestSize: SketchSize = { width: 1920, height: 1080 };
+  private lastContextFrame: number | null = null;
+  private lastContextTimeMs: number | null = null;
 
   protected abstract drawFrame(sketch: p5, frame: number, fps: number, size: SketchSize): void;
 
@@ -32,6 +39,8 @@ export abstract class P5SketchBase<P extends P5SketchProps = P5SketchProps> exte
     this.latestFrame = this.getFrame();
     this.latestFps = this.getFps();
     this.latestSize = this.getSize();
+    this.lastContextFrame = this.context?.frame ?? null;
+    this.lastContextTimeMs = this.context?.timeMs ?? null;
     void this.initSketch();
   }
 
@@ -42,6 +51,8 @@ export abstract class P5SketchBase<P extends P5SketchProps = P5SketchProps> exte
     this.latestFrame = this.getFrame();
     this.latestFps = this.getFps();
     this.latestSize = size;
+    const contextFrame = this.context?.frame ?? null;
+    const contextTimeMs = this.context?.timeMs ?? null;
 
     if (sizeChanged) {
       this.p5Instance.resizeCanvas(size.width, size.height);
@@ -49,12 +60,18 @@ export abstract class P5SketchBase<P extends P5SketchProps = P5SketchProps> exte
 
     if (
       prevProps.frame !== this.props.frame ||
+      prevProps.timeSec !== this.props.timeSec ||
       prevProps.fps !== this.props.fps ||
       prevProps.videoWidth !== this.props.videoWidth ||
-      prevProps.videoHeight !== this.props.videoHeight
+      prevProps.videoHeight !== this.props.videoHeight ||
+      contextFrame !== this.lastContextFrame ||
+      contextTimeMs !== this.lastContextTimeMs
     ) {
       this.p5Instance.redraw();
     }
+
+    this.lastContextFrame = contextFrame;
+    this.lastContextTimeMs = contextTimeMs;
   }
 
   componentWillUnmount(): void {
@@ -65,17 +82,31 @@ export abstract class P5SketchBase<P extends P5SketchProps = P5SketchProps> exte
   }
 
   protected getFrame(): number {
-    return this.props.frame ?? 0;
+    const frameProp = this.props.frame;
+    if (typeof frameProp === "number" && frameProp > 0) {
+      return frameProp;
+    }
+    const timeSec = (this.props as any).timeSec;
+    if (typeof timeSec === "number" && timeSec > 0) {
+      return Math.round(timeSec * this.getFps());
+    }
+    if (this.context && typeof this.context.frame === "number") {
+      return this.context.frame;
+    }
+    if (this.context && typeof this.context.timeMs === "number" && this.context.timeMs > 0) {
+      return Math.round((this.context.timeMs / 1000) * this.getFps());
+    }
+    return frameProp ?? 0;
   }
 
   protected getFps(): number {
-    return this.props.fps ?? 30;
+    return this.props.fps ?? this.context?.fps ?? 30;
   }
 
   protected getSize(): SketchSize {
     return {
-      width: this.props.videoWidth ?? 1920,
-      height: this.props.videoHeight ?? 1080,
+      width: this.props.videoWidth ?? this.context?.config?.width ?? 1920,
+      height: this.props.videoHeight ?? this.context?.config?.height ?? 1080,
     };
   }
 

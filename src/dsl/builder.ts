@@ -570,6 +570,13 @@ class LayerBuilder {
   }
 
   /**
+   * Add a Processing/p5 shader-based neon field background.
+   */
+  p5NeonField(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {
+    return this.component(`p5-neon-field-${this.spec.components.length}`, 'P5NeonField', props, options);
+  }
+
+  /**
    * Add a Three.js orbit demo component.
    */
   threeOrbit(props: Record<string, unknown>, options?: { timing?: { startSec?: number; endSec?: number } }): this {

@@ -15,7 +15,7 @@ export type RenderContext = {
   config: VideoConfig;
 };
 
-const RendererContext = createContext<RenderContext | null>(null);
+export const RendererContext = createContext<RenderContext | null>(null);
 
 export type RendererProviderProps = {
   frame: number;
