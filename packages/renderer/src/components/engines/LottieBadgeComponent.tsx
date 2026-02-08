@@ -1,6 +1,6 @@
 import React from 'react';
 import { LottieBase, type LottieBaseProps } from '../../engines/LottieBase.js';
-import chatCorregido from './lottie/chat-corregido.json';
+import chatCorregido from './lottie/chat-corregido.json' with { type: 'json' };
 
 const DEFAULT_BADGE = {
   v: '5.7.4',

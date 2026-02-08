@@ -7,7 +7,7 @@ import { ParseError } from "./errors.js";
 export type Config = Record<string, unknown>;
 
 export function loadConfig(projectDir?: string, dslPath?: string): Config {
-  const override = process.env.BABULUS_PATH;
+  const override = process.env.VIDEOML_PATH || process.env.BABULUS_PATH;
   if (override) {
     const resolved = resolve(override);
     const candidate =
@@ -24,7 +24,7 @@ export function loadConfig(projectDir?: string, dslPath?: string): Config {
         }
       }
     } else if (!projectDir && !dslPath) {
-      throw new ParseError(`BABULUS_PATH is set but config not found: ${candidate}`);
+      throw new ParseError(`VIDEOML_PATH/BABULUS_PATH is set but config not found: ${candidate}`);
     }
   }
 
@@ -36,20 +36,21 @@ export function loadConfig(projectDir?: string, dslPath?: string): Config {
 }
 
 export function findConfigPath(projectDir?: string, dslPath?: string): string | null {
-  const override = process.env.BABULUS_PATH;
+  const override = process.env.VIDEOML_PATH || process.env.BABULUS_PATH;
   if (override) {
     const resolved = resolve(override);
-    const candidate = existsSync(resolved) && !resolved.endsWith(".yml") && !resolved.endsWith(".yaml")
-      ? join(resolved, "config.yml")
-      : resolved;
+    const candidate =
+      existsSync(resolved) && !resolved.endsWith(".yml") && !resolved.endsWith(".yaml")
+        ? join(resolved, "config.yml")
+        : resolved;
     if (existsSync(candidate)) {
       return candidate;
     }
     // If a projectDir/dslPath is provided, fall back to that rather than hard-failing.
     // This keeps strict behavior for config-only lookups but avoids breaking CLI runs
-    // when a global BABULUS_PATH is stale.
+    // when a global path is stale.
     if (!projectDir && !dslPath) {
-      throw new ParseError(`BABULUS_PATH is set but config not found: ${candidate}`);
+      throw new ParseError(`VIDEOML_PATH/BABULUS_PATH is set but config not found: ${candidate}`);
     }
   }
 
@@ -59,27 +60,43 @@ export function findConfigPath(projectDir?: string, dslPath?: string): string | 
 function findConfigPathWithoutOverride(projectDir?: string, dslPath?: string): string | null {
   if (dslPath) {
     const root = findProjectRoot(dslPath);
-    const local = join(root, ".babulus", "config.yml");
-    if (existsSync(local)) {
-      return local;
+    const videomlLocal = join(root, ".videoml", "config.yml");
+    if (existsSync(videomlLocal)) {
+      return videomlLocal;
+    }
+    const babulusLocal = join(root, ".babulus", "config.yml");
+    if (existsSync(babulusLocal)) {
+      return babulusLocal;
     }
   }
 
   if (projectDir) {
-    const local = join(resolve(projectDir), ".babulus", "config.yml");
-    if (existsSync(local)) {
-      return local;
+    const videomlLocal = join(resolve(projectDir), ".videoml", "config.yml");
+    if (existsSync(videomlLocal)) {
+      return videomlLocal;
+    }
+    const babulusLocal = join(resolve(projectDir), ".babulus", "config.yml");
+    if (existsSync(babulusLocal)) {
+      return babulusLocal;
     }
   }
 
-  const cwdLocal = join(process.cwd(), ".babulus", "config.yml");
-  if (existsSync(cwdLocal)) {
-    return cwdLocal;
+  const cwdVideoml = join(process.cwd(), ".videoml", "config.yml");
+  if (existsSync(cwdVideoml)) {
+    return cwdVideoml;
+  }
+  const cwdBabulus = join(process.cwd(), ".babulus", "config.yml");
+  if (existsSync(cwdBabulus)) {
+    return cwdBabulus;
   }
 
-  const homeLocal = join(homedir(), ".babulus", "config.yml");
-  if (existsSync(homeLocal)) {
-    return homeLocal;
+  const homeVideoml = join(homedir(), ".videoml", "config.yml");
+  if (existsSync(homeVideoml)) {
+    return homeVideoml;
+  }
+  const homeBabulus = join(homedir(), ".babulus", "config.yml");
+  if (existsSync(homeBabulus)) {
+    return homeBabulus;
   }
 
   return null;
@@ -107,7 +124,7 @@ function parseConfig(path: string): Config {
 export function findProjectRoot(dslPath: string): string {
   let current = resolve(dirname(dslPath));
   while (true) {
-    if (existsSync(join(current, ".babulus")) || existsSync(join(current, ".git"))) {
+    if (existsSync(join(current, ".videoml")) || existsSync(join(current, ".babulus")) || existsSync(join(current, ".git"))) {
       return current;
     }
     const parent = dirname(current);

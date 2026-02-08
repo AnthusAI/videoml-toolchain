@@ -3,7 +3,7 @@ import { join } from "path";
 export const ENV_FALLBACK_CHAIN = ["development", "aws", "azure", "production", "static"] as const;
 
 export function getEnvironment(): string {
-  return process.env.BABULUS_ENV || "development";
+  return process.env.VIDEOML_ENV || process.env.BABULUS_ENV || "development";
 }
 
 export function getEnvironmentFallbackChain(currentEnv: string): string[] {

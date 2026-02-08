@@ -7,6 +7,7 @@ import { loadConfig, findConfigPath, getProviderConfig, getDefaultProvider } fro
 describe('Config Loader', () => {
   let testDir: string;
   let originalBabulusPath: string | undefined;
+  let originalVideomlPath: string | undefined;
   let originalCwd: string;
 
   beforeEach(() => {
@@ -16,6 +17,7 @@ describe('Config Loader', () => {
 
     // Save original environment
     originalBabulusPath = process.env.BABULUS_PATH;
+    originalVideomlPath = process.env.VIDEOML_PATH;
     originalCwd = process.cwd();
   });
 
@@ -26,6 +28,11 @@ describe('Config Loader', () => {
     } else {
       delete process.env.BABULUS_PATH;
     }
+    if (originalVideomlPath) {
+      process.env.VIDEOML_PATH = originalVideomlPath;
+    } else {
+      delete process.env.VIDEOML_PATH;
+    }
     process.chdir(originalCwd);
 
     // Clean up test directory
@@ -35,6 +42,15 @@ describe('Config Loader', () => {
   });
 
   describe('findConfigPath', () => {
+    it('should find config from VIDEOML_PATH environment variable', () => {
+      const configPath = join(testDir, 'videoml-config.yml');
+      writeFileSync(configPath, 'providers: {}');
+      process.env.VIDEOML_PATH = configPath;
+
+      const found = findConfigPath();
+      expect(found).toBe(configPath);
+    });
+
     it('should find config from BABULUS_PATH environment variable', () => {
       const configPath = join(testDir, 'custom-config.yml');
       writeFileSync(configPath, 'providers: {}');
@@ -55,16 +71,21 @@ describe('Config Loader', () => {
       expect(found).toBe(configPath);
     });
 
+    it('should throw error if VIDEOML_PATH is set but config not found', () => {
+      process.env.VIDEOML_PATH = join(testDir, 'nonexistent');
+      expect(() => findConfigPath()).toThrow(/VIDEOML_PATH\/BABULUS_PATH is set but config not found/);
+    });
+
     it('should throw error if BABULUS_PATH is set but config not found', () => {
       process.env.BABULUS_PATH = join(testDir, 'nonexistent');
-      expect(() => findConfigPath()).toThrow(/BABULUS_PATH is set but config not found/);
+      expect(() => findConfigPath()).toThrow(/VIDEOML_PATH\/BABULUS_PATH is set but config not found/);
     });
 
     it('should find config in project directory', () => {
       const projectDir = join(testDir, 'project');
-      const babulusDir = join(projectDir, '.babulus');
-      mkdirSync(babulusDir, { recursive: true });
-      const configPath = join(babulusDir, 'config.yml');
+      const videomlDir = join(projectDir, '.videoml');
+      mkdirSync(videomlDir, { recursive: true });
+      const configPath = join(videomlDir, 'config.yml');
       writeFileSync(configPath, 'providers: {}');
 
       const found = findConfigPath(projectDir);
@@ -73,9 +94,9 @@ describe('Config Loader', () => {
 
     it('should find config in DSL file parent directory', () => {
       const projectDir = join(testDir, 'dsl-project');
-      const babulusDir = join(projectDir, '.babulus');
-      mkdirSync(babulusDir, { recursive: true });
-      const configPath = join(babulusDir, 'config.yml');
+      const videomlDir = join(projectDir, '.videoml');
+      mkdirSync(videomlDir, { recursive: true });
+      const configPath = join(videomlDir, 'config.yml');
       writeFileSync(configPath, 'providers: {}');
 
       const dslPath = join(projectDir, 'video.babulus.xml');
@@ -86,9 +107,9 @@ describe('Config Loader', () => {
     });
 
     it('should find config in current working directory', () => {
-      const babulusDir = join(testDir, '.babulus');
-      mkdirSync(babulusDir, { recursive: true });
-      const configPath = join(babulusDir, 'config.yml');
+      const videomlDir = join(testDir, '.videoml');
+      mkdirSync(videomlDir, { recursive: true });
+      const configPath = join(videomlDir, 'config.yml');
       writeFileSync(configPath, 'providers: {}');
 
       process.chdir(testDir);
@@ -105,9 +126,9 @@ describe('Config Loader', () => {
       // This test verifies search order by setting up configs in multiple locations
       // and ensuring BABULUS_PATH takes precedence
       const envConfigPath = join(testDir, 'env-config.yml');
-      const cwdConfigPath = join(testDir, '.babulus', 'config.yml');
+      const cwdConfigPath = join(testDir, '.videoml', 'config.yml');
 
-      mkdirSync(join(testDir, '.babulus'), { recursive: true });
+      mkdirSync(join(testDir, '.videoml'), { recursive: true });
       writeFileSync(envConfigPath, 'providers:\n  test: env');
       writeFileSync(cwdConfigPath, 'providers:\n  test: cwd');
 
@@ -117,12 +138,27 @@ describe('Config Loader', () => {
       const found = findConfigPath();
       expect(found).toBe(envConfigPath);
     });
+
+    it('should prefer .videoml over .babulus', () => {
+      const projectDir = join(testDir, 'priorities');
+      const videomlDir = join(projectDir, '.videoml');
+      const babulusDir = join(projectDir, '.babulus');
+      mkdirSync(videomlDir, { recursive: true });
+      mkdirSync(babulusDir, { recursive: true });
+      const videomlPath = join(videomlDir, 'config.yml');
+      const babulusPath = join(babulusDir, 'config.yml');
+      writeFileSync(videomlPath, 'providers:\n  test: videoml');
+      writeFileSync(babulusPath, 'providers:\n  test: babulus');
+
+      const found = findConfigPath(projectDir);
+      expect(found).toBe(videomlPath);
+    });
   });
 
   describe('loadConfig', () => {
     it('should load valid YAML config', () => {
-      const configPath = join(testDir, '.babulus', 'config.yml');
-      mkdirSync(join(testDir, '.babulus'), { recursive: true });
+      const configPath = join(testDir, '.videoml', 'config.yml');
+      mkdirSync(join(testDir, '.videoml'), { recursive: true });
       writeFileSync(configPath, `
 providers:
   openai:
@@ -145,24 +181,24 @@ tts:
     });
 
     it('should throw error for invalid YAML', () => {
-      const configPath = join(testDir, '.babulus', 'config.yml');
-      mkdirSync(join(testDir, '.babulus'), { recursive: true });
+      const configPath = join(testDir, '.videoml', 'config.yml');
+      mkdirSync(join(testDir, '.videoml'), { recursive: true });
       writeFileSync(configPath, 'invalid: yaml: content: [');
 
       expect(() => loadConfig(testDir)).toThrow(/Invalid config/);
     });
 
     it('should throw error if config is not an object', () => {
-      const configPath = join(testDir, '.babulus', 'config.yml');
-      mkdirSync(join(testDir, '.babulus'), { recursive: true });
+      const configPath = join(testDir, '.videoml', 'config.yml');
+      mkdirSync(join(testDir, '.videoml'), { recursive: true });
       writeFileSync(configPath, '- list\n- of\n- items');
 
       expect(() => loadConfig(testDir)).toThrow(/Config must be a mapping/);
     });
 
     it('should handle empty config file', () => {
-      const configPath = join(testDir, '.babulus', 'config.yml');
-      mkdirSync(join(testDir, '.babulus'), { recursive: true });
+      const configPath = join(testDir, '.videoml', 'config.yml');
+      mkdirSync(join(testDir, '.videoml'), { recursive: true });
       writeFileSync(configPath, '');
 
       const config = loadConfig(testDir);

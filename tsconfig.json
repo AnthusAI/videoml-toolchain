@@ -10,7 +10,13 @@
       "babulus/*": ["src/*"],
       "@/*": ["apps/studio-web/*"],
       "@babulus/shared": ["packages/shared/src/index.ts"],
-      "@babulus/renderer": ["packages/renderer/src/index.ts"]
+      "@babulus/renderer": ["packages/renderer/src/index.ts"],
+      "@videoml/player": ["packages/videoml-player/src/index.ts"],
+      "@videoml/player/react": ["packages/videoml-player/src/react.tsx"],
+      "@videoml/stdlib": ["packages/videoml-stdlib/src/index.ts"],
+      "@videoml/stdlib/dom": ["packages/videoml-stdlib/src/dom/index.ts"],
+      "@videoml/stdlib/react": ["packages/videoml-stdlib/src/react/index.ts"],
+      "@videoml/stdlib/tokens": ["packages/videoml-stdlib/src/tokens/index.ts"]
     },
     "strict": true,
     "esModuleInterop": true,
