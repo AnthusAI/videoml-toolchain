@@ -1,8 +1,9 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
+  # Note: enable npm Trusted Publishing first (per-package in npmjs.com),
+  # then re-enable push->main for automatic releases.
+  workflow_dispatch: {}
 
 permissions:
   contents: write
