@@ -45,6 +45,7 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
       String(cfg.api_key ?? "") ||
       (typeof (config as any)?.openai_api_key === "string" ? String((config as any).openai_api_key) : "");
     if (!apiKey || apiKey.startsWith("test-")) {
+      console.warn(`[WARN] TTS provider "openai" was requested, but no API key was found (or a test key was used). Falling back to "dry-run" provider which generates silent audio.`);
       return dryRunProvider();
     }
     return new OpenAITTSProvider({
@@ -80,6 +81,7 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
     const apiKey = process.env.ELEVENLABS_API_KEY || String(cfg.api_key ?? "");
     const voiceId = String(cfg.voice_id ?? "");
     if (!apiKey || apiKey.startsWith("test-") || !voiceId) {
+      console.warn(`[WARN] TTS provider "elevenlabs" was requested, but API key or voice_id is missing. Falling back to "dry-run" provider which generates silent audio.`);
       return dryRunProvider();
     }
     return new ElevenLabsTTSProvider({
@@ -105,6 +107,7 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
       Boolean(process.env.AWS_PROFILE) ||
       Boolean(process.env.AWS_WEB_IDENTITY_TOKEN_FILE);
     if (!hasAwsCreds) {
+      console.warn(`[WARN] TTS provider "aws-polly" was requested, but no AWS credentials were found. Falling back to "dry-run" provider which generates silent audio.`);
       return dryRunProvider();
     }
     return new PollyTTSProvider({
@@ -125,6 +128,7 @@ export function getTtsProvider(name: string, config: Config): TTSProvider {
     const apiKey = process.env.AZURE_SPEECH_KEY || String(cfg.api_key ?? "");
     const region = process.env.AZURE_SPEECH_REGION || String(cfg.region ?? "");
     if (!apiKey || apiKey.startsWith("test-") || !region) {
+      console.warn(`[WARN] TTS provider "azure-speech" was requested, but API key or region is missing. Falling back to "dry-run" provider which generates silent audio.`);
       return dryRunProvider();
     }
     return new AzureSpeechTTSProvider({
