@@ -68,3 +68,9 @@ Thumbs.db
 # Temporary files
 tmp/
 *.bak
+
+# Claude / agent tooling
+.claude/
+
+# Kanbus project data
+project/
