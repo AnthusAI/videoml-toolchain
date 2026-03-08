@@ -6,7 +6,8 @@ import type { CompositionSpec, VideoFileSpec } from "./types.js";
 import { loadVideoFileFromXml } from "./xml.js";
 
 export async function loadVideoFile(path: string): Promise<VideoFileSpec> {
-  if (extname(path).toLowerCase() === ".xml") {
+  const ext = extname(path).toLowerCase();
+  if (ext === ".xml" || ext === ".vml" || ext === ".videoml" || ext === ".video-ml") {
     const xml = readFileSync(path, "utf-8");
     return loadVideoFileFromXml(xml);
   }

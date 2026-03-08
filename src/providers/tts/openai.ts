@@ -1,21 +1,12 @@
-import { writeFileSync, statSync, readFileSync } from "fs";
+import { writeFileSync, renameSync, unlinkSync, existsSync } from "fs";
 import type { TTSProvider, TTSRequest, TTSSegment } from "./types.js";
 import { CompileError } from "../../errors.js";
-
-function wavDurationSec(path: string): number {
-  const buf = readFileSync(path);
-  if (buf.length < 44) {
-    return 0;
-  }
-  const sampleRate = buf.readUInt32LE(24);
-  const numChannels = buf.readUInt16LE(22);
-  const bitsPerSample = buf.readUInt16LE(34);
-  const bytesPerSample = bitsPerSample / 8;
-  const headerSize = 44;
-  const audioBytes = buf.length - headerSize;
-  const frames = audioBytes / (numChannels * bytesPerSample);
-  return frames / sampleRate;
-}
+import {
+  probeDurationSec,
+  validateAudioFile,
+  AUDIO_MIN_ACTIVITY_RATIO_DEFAULT,
+  AUDIO_MIN_DURATION_SEC_DEFAULT,
+} from "../../media.js";
 
 export class OpenAITTSProvider implements TTSProvider {
   name = "openai";
@@ -77,8 +68,41 @@ export class OpenAITTSProvider implements TTSProvider {
       }
     }
 
-    writeFileSync(outPath, buf);
-    const duration = wavDurationSec(outPath);
-    return { path: outPath, durationSec: duration };
+    const tmpOutPath = `${outPath}.tmp-${Date.now()}-${process.pid}`;
+    let wroteTmp = false;
+    try {
+      writeFileSync(tmpOutPath, buf);
+      wroteTmp = true;
+
+      const validation = validateAudioFile(tmpOutPath, {
+        requireAudioStream: true,
+        minBytes: 256,
+        minDurationSec: AUDIO_MIN_DURATION_SEC_DEFAULT,
+        probeSeconds: 3,
+        sampleRateHz: req.sampleRateHz,
+        minActivityRatio: AUDIO_MIN_ACTIVITY_RATIO_DEFAULT,
+        checkSilence: true,
+      });
+      if (!validation.valid) {
+        throw new CompileError(
+          `OpenAI TTS returned unusable audio: ${validation.failures.join(", ")} ` +
+          `(bytes=${validation.bytes}, duration=${validation.durationSec.toFixed(3)}s, ` +
+          `activity_ratio=${(validation.activityRatio ?? 0).toFixed(4)})`,
+        );
+      }
+
+      const duration = probeDurationSec(tmpOutPath);
+      renameSync(tmpOutPath, outPath);
+      wroteTmp = false;
+      return { path: outPath, durationSec: duration };
+    } finally {
+      if (wroteTmp && existsSync(tmpOutPath)) {
+        try {
+          unlinkSync(tmpOutPath);
+        } catch {
+          // Ignore cleanup failures so the original synthesis error is preserved.
+        }
+      }
+    }
   }
 }

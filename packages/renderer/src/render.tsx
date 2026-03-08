@@ -362,6 +362,15 @@ export const renderFramesToPng = async ({
             "</head>",
             `<body>`,
             `<div id="root" style="width:100%;height:100%;background:#fdfdfd;"></div>`,
+            `<script>`,
+            `window.renderFrame = async function(options) {`,
+            `  const root = document.getElementById('root');`,
+            `  if (window.Babulus && window.Babulus._updateFrame) {`,
+            `    window.Babulus._updateFrame(options.frame, options.config.fps);`,
+            `  }`,
+            `  // Add any further render logic here if missing`,
+            `};`,
+            `</script>`,
             "</body>",
             "</html>",
           ].join("");
@@ -454,19 +463,44 @@ export const renderFramesToPng = async ({
     }),
   );
 
+  const safeClose = async (
+    label: string,
+    closeFn?: () => Promise<void>,
+    timeoutMs = 5000,
+  ): Promise<void> => {
+    if (!closeFn) {
+      return;
+    }
+    let timeout: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([
+        closeFn(),
+        new Promise<void>((resolve) => {
+          timeout = setTimeout(resolve, timeoutMs);
+        }),
+      ]);
+    } catch (err) {
+      console.error(`Warning: ${label} close failed:`, err);
+    } finally {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    }
+  };
+
   await Promise.all(
     workersPool.map(async ({ page, closeContext }) => {
       try {
         await renderWithPage(page);
       } finally {
-        await page.close?.();
-        await closeContext?.();
+        await safeClose("page", page.close?.bind(page));
+        await safeClose("context", closeContext);
       }
     }),
   );
 
   if (shouldClose) {
-    await activeBrowser.close?.();
+    await safeClose("browser", activeBrowser.close?.bind(activeBrowser));
   }
 
   frames.sort((a, b) => a.frame - b.frame);

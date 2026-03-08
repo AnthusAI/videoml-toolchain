@@ -1,5 +1,5 @@
 import { spawnSync } from "child_process";
-import { writeFileSync, unlinkSync, existsSync, readFileSync } from "fs";
+import { writeFileSync, unlinkSync, existsSync, readFileSync, statSync } from "fs";
 import { join, basename, dirname } from "path";
 import { CompileError } from "./errors.js";
 import { ensureDir } from "./util.js";
@@ -31,6 +31,144 @@ function run(cmd: string, args: string[], opts?: { text?: boolean }): { stdout: 
     stdout: res.stdout instanceof Buffer ? res.stdout : Buffer.from(String(res.stdout ?? "")),
     stderr: res.stderr instanceof Buffer ? res.stderr : Buffer.from(String(res.stderr ?? "")),
   };
+}
+
+export const AUDIO_MIN_BYTES_DEFAULT = 256;
+export const AUDIO_MIN_DURATION_SEC_DEFAULT = 0.2;
+export const AUDIO_PROBE_SECONDS_DEFAULT = 3.0;
+export const AUDIO_MIN_ACTIVITY_RATIO_DEFAULT = 0.001;
+
+export type AudioValidationOptions = {
+  requireAudioStream?: boolean;
+  minBytes?: number;
+  minDurationSec?: number;
+  probeSeconds?: number;
+  sampleRateHz?: number;
+  minActivityRatio?: number;
+  checkSilence?: boolean;
+};
+
+export type AudioValidationResult = {
+  path: string;
+  exists: boolean;
+  bytes: number;
+  durationSec: number;
+  audioStreamCount: number;
+  isAllSilence: boolean | null;
+  activityRatio: number | null;
+  valid: boolean;
+  failures: string[];
+};
+
+function clampProbeSeconds(requested: number, durationSec: number): number {
+  if (!Number.isFinite(requested) || requested <= 0) {
+    return AUDIO_PROBE_SECONDS_DEFAULT;
+  }
+  if (!Number.isFinite(durationSec) || durationSec <= 0) {
+    return requested;
+  }
+  return Math.max(0.25, Math.min(requested, durationSec));
+}
+
+export function probeAudioStreamCount(path: string): number {
+  const { stdout } = run("ffprobe", [
+    "-v",
+    "error",
+    "-select_streams",
+    "a",
+    "-show_entries",
+    "stream=index",
+    "-of",
+    "csv=p=0",
+    path,
+  ], { text: true });
+  const text = stdout.toString("utf-8").trim();
+  if (!text) {
+    return 0;
+  }
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean).length;
+}
+
+export function validateAudioFile(path: string, opts: AudioValidationOptions = {}): AudioValidationResult {
+  const requireAudioStream = opts.requireAudioStream ?? true;
+  const minBytes = opts.minBytes ?? AUDIO_MIN_BYTES_DEFAULT;
+  const minDurationSec = opts.minDurationSec ?? AUDIO_MIN_DURATION_SEC_DEFAULT;
+  const probeSeconds = opts.probeSeconds ?? AUDIO_PROBE_SECONDS_DEFAULT;
+  const sampleRateHz = opts.sampleRateHz ?? 44100;
+  const minActivityRatio = opts.minActivityRatio ?? AUDIO_MIN_ACTIVITY_RATIO_DEFAULT;
+  const checkSilence = opts.checkSilence ?? true;
+
+  const result: AudioValidationResult = {
+    path,
+    exists: false,
+    bytes: 0,
+    durationSec: 0,
+    audioStreamCount: 0,
+    isAllSilence: null,
+    activityRatio: null,
+    valid: false,
+    failures: [],
+  };
+
+  if (!existsSync(path)) {
+    result.failures.push("missing-file");
+    return result;
+  }
+  result.exists = true;
+
+  try {
+    result.bytes = statSync(path).size;
+  } catch {
+    result.failures.push("stat-failed");
+  }
+  if (result.bytes < minBytes) {
+    result.failures.push(`bytes-below-min(${result.bytes}<${minBytes})`);
+  }
+
+  try {
+    result.durationSec = probeDurationSec(path);
+  } catch {
+    result.failures.push("probe-duration-failed");
+  }
+  if (result.durationSec < minDurationSec) {
+    result.failures.push(`duration-below-min(${result.durationSec.toFixed(3)}<${minDurationSec})`);
+  }
+
+  try {
+    result.audioStreamCount = probeAudioStreamCount(path);
+  } catch {
+    result.failures.push("probe-streams-failed");
+  }
+  if (requireAudioStream && result.audioStreamCount < 1) {
+    result.failures.push("missing-audio-stream");
+  }
+
+  const shouldInspectWaveform = checkSilence || minActivityRatio > 0;
+  if (shouldInspectWaveform && (!requireAudioStream || result.audioStreamCount > 0)) {
+    const secondsToProbe = clampProbeSeconds(probeSeconds, result.durationSec);
+    try {
+      result.isAllSilence = isAudioAllSilence(path, secondsToProbe, sampleRateHz);
+    } catch {
+      result.failures.push("silence-check-failed");
+    }
+    try {
+      result.activityRatio = audioActivityRatio(path, secondsToProbe, sampleRateHz);
+    } catch {
+      result.failures.push("activity-check-failed");
+    }
+    if (checkSilence && result.isAllSilence === true) {
+      result.failures.push("all-silence");
+    }
+    if (minActivityRatio > 0 && result.activityRatio != null && result.activityRatio < minActivityRatio) {
+      result.failures.push(`activity-below-min(${result.activityRatio.toFixed(4)}<${minActivityRatio})`);
+    }
+  }
+
+  result.valid = result.failures.length === 0;
+  return result;
 }
 
 export function probeDurationSec(path: string): number {

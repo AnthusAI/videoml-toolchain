@@ -62,8 +62,14 @@
   "dependencies": {
     "@aws-sdk/client-polly": "^3.699.0",
     "@xmldom/xmldom": "^0.8.11",
+    "d3": "^7.9.0",
+    "framer-motion": "^11.18.0",
+    "gsap": "^3.12.5",
+    "lottie-web": "^5.12.2",
+    "p5": "^1.9.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "three": "^0.170.0",
     "tsx": "^4.19.0",
     "yaml": "^2.5.1"
   },
