@@ -26,7 +26,15 @@ import {
   type LayerSpec,
 } from "./dsl/types.js";
 import { pause as pauseHelper } from "./dsl/pause.js";
-import { concatAudioFiles, estimateTrailingSilenceSec, probeDurationSec, trimAudioToDuration } from "./media.js";
+import {
+  concatAudioFiles,
+  estimateTrailingSilenceSec,
+  probeDurationSec,
+  trimAudioToDuration,
+  validateAudioFile,
+  AUDIO_MIN_DURATION_SEC_DEFAULT,
+  AUDIO_MIN_ACTIVITY_RATIO_DEFAULT,
+} from "./media.js";
 import { writeSilenceWav } from "./audio/wav.js";
 import { loadSelections, selectionPath } from "./sfx-workflow.js";
 import { ensureDictionaryFromRules, rulesHash, type PronunciationRule } from "./elevenlabs-pronunciation.js";
@@ -44,12 +52,34 @@ export type GeneratedArtifact = {
   runPath?: string;
 };
 
+/**
+ * Build a VideoML timing overlay XML string from generated scene data.
+ * The overlay contains only structural skeleton elements with start/end attributes
+ * derived from empirical audio measurement. The player applies this over the source
+ * XML to get accurate scene and cue timing without modifying the source file.
+ */
+function buildTimingOverlay(scenes: Script["scenes"], compositionId: string): string {
+  const sceneLines: string[] = [];
+  for (const scene of scenes) {
+    const cueLines: string[] = [];
+    for (const cue of scene.cues ?? []) {
+      const cueRelStart = cue.startSec - scene.startSec;
+      const cueRelEnd = cue.endSec - scene.startSec;
+      cueLines.push(`    <cue id="${cue.id}" start="${cueRelStart.toFixed(4)}s" end="${cueRelEnd.toFixed(4)}s" />`);
+    }
+    const inner = cueLines.length ? `\n${cueLines.join("\n")}\n  ` : "";
+    sceneLines.push(`  <scene id="${scene.id}" start="${scene.startSec.toFixed(4)}s" end="${scene.endSec.toFixed(4)}s">${inner}</scene>`);
+  }
+  return `<vml id="${compositionId}">\n${sceneLines.join("\n")}\n</vml>\n`;
+}
+
 export type GenerateOptions = {
   composition: CompositionSpec;
   dslPath: string;
   scriptOut: string;
   audioOut?: string | null;
   timelineOut: string;
+  timingOut?: string | null;
   outDir: string;
   config: Config;
   providerOverride?: string | null;
@@ -69,6 +99,7 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     scriptOut,
     audioOut,
     timelineOut,
+    timingOut,
     outDir,
     config,
     providerOverride,
@@ -246,6 +277,29 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
     recordUsage(usageLedger, { ...entry, estimatedCost });
   };
 
+  const assertValidSpeechAudio = (segmentPath: string, locationDetails: string): number => {
+    const validation = validateAudioFile(segmentPath, {
+      requireAudioStream: true,
+      minBytes: 256,
+      minDurationSec: AUDIO_MIN_DURATION_SEC_DEFAULT,
+      probeSeconds: 3,
+      sampleRateHz,
+      minActivityRatio: AUDIO_MIN_ACTIVITY_RATIO_DEFAULT,
+      checkSilence: true,
+    });
+    if (!validation.valid) {
+      throw new CompileError(
+        `TTS audio validation failed: ${validation.failures.join(", ")}\n` +
+        `  File: ${segmentPath}\n` +
+        `  Bytes: ${validation.bytes}\n` +
+        `  Duration: ${validation.durationSec.toFixed(3)}s\n` +
+        `  Activity Ratio: ${(validation.activityRatio ?? 0).toFixed(4)}\n\n` +
+        `${locationDetails}`,
+      );
+    }
+    return validation.durationSec;
+  };
+
   for (const scene of sceneItems) {
     if (scene.time?.start != null && scene.time.end == null) {
       throw new CompileError(
@@ -341,6 +395,8 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
         });
         let duration: number;
         let segPath: string | null = null;
+        const locationDetails =
+          `Location: ${dslPath}\n  Scene: ${scene.id}\n  Cue: ${cue.id}\n  Segment: ${segIndex + 1}`;
 
         if (dryRunMode) {
           const wpm = (provider as { wpm?: number }).wpm ?? 165;
@@ -357,22 +413,22 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
           if (cacheValid) {
             segPath = cached.path!;
             const manifestDuration = getManifestDuration(manifest, "segments", segPath, segKey);
-            const probedDuration = probeDurationSec(segPath);
-            duration = probedDuration;
+            const validatedDuration = assertValidSpeechAudio(segPath, locationDetails);
+            duration = validatedDuration;
             if (cached.env !== currentEnv) {
               _log(`tts: fallback scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} using env=${cached.env}`);
             } else if (verboseLogs) {
               _log(`tts: cache scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} key=${safePrefix(segKey).slice(0, 8)}`);
             }
-            if (manifestDuration == null || Math.abs(manifestDuration - probedDuration) > 0.02) {
-              setManifestEntry(manifest, "segments", segPath, segKey, probedDuration, {
+            if (manifestDuration == null || Math.abs(manifestDuration - validatedDuration) > 0.02) {
+              setManifestEntry(manifest, "segments", segPath, segKey, validatedDuration, {
                 provider: providerName,
                 sceneId: scene.id,
                 cueId: cue.id,
                 text: segSpec.text,
                 sample_rate_hz: sampleRateHz,
                 format: segPath.split(".").pop(),
-                rawDurationSec: probedDuration,
+                rawDurationSec: validatedDuration,
                 trimEndSec: 0,
               });
             }
@@ -383,7 +439,7 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
             }
             _log(`tts: synth scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} -> ${segPath.split(sep).pop()}`);
             try {
-              const seg = await provider.synthesize(
+              await provider.synthesize(
                 {
                   text: segSpec.text,
                   voice: voiceover.voice ?? null,
@@ -407,12 +463,12 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
                 voice: resolvedVoice,
                 env: currentEnv,
               });
-              duration = seg.durationSec;
+              duration = assertValidSpeechAudio(segPath, locationDetails);
               didSynthesize = true;
             } catch (err) {
               const message = err instanceof Error ? err.message : String(err);
               throw new CompileError(
-                `${message}\n\nLocation: ${dslPath}\n  Scene: ${scene.id}\n  Cue: ${cue.id}\n  Segment: ${segIndex + 1}`,
+                `${message}\n\n${locationDetails}`,
               );
             }
           }
@@ -426,7 +482,7 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
             );
           }
           _log(`tts: corrupt-duration scene=${scene.id} cue=${cue.id} seg=${segIndex + 1} duration=${duration.toFixed(1)}s -> regen`);
-          const seg = await provider.synthesize(
+          await provider.synthesize(
             {
               text: segSpec.text,
               voice: voiceover.voice ?? null,
@@ -450,7 +506,7 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
             voice: resolvedVoice,
             env: currentEnv,
           });
-          duration = seg.durationSec;
+          duration = assertValidSpeechAudio(segPath, locationDetails);
           didSynthesize = true;
         }
 
@@ -812,6 +868,8 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
         });
         let duration: number;
         let segPath: string | null = null;
+        const locationDetails =
+          `Location: ${dslPath}\n  Narration: ${item.id}\n  Cue: ${cue.id}\n  Segment: ${segIndex + 1}`;
 
         if (dryRunMode) {
           const wpm = (provider as { wpm?: number }).wpm ?? 165;
@@ -839,8 +897,8 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
           if (cacheValid) {
             segPath = cached.path!;
             const manifestDuration = getManifestDuration(manifest, "segments", segPath, segKey);
-            const probedDuration = probeDurationSec(segPath);
-            duration = probedDuration;
+            const validatedDuration = assertValidSpeechAudio(segPath, locationDetails);
+            duration = validatedDuration;
             if (cached.env !== currentEnv) {
               _log(`tts: fallback scene=${narrationSceneId} cue=${cue.id} seg=${segIndex + 1} using env=${cached.env}`);
             } else if (verboseLogs) {
@@ -850,15 +908,15 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
             }
             if (manifestDuration != null) {
               duration = manifestDuration;
-            } else if (duration != null) {
-              setManifestEntry(manifest, "segments", segPath, segKey, duration, {
+            } else {
+              setManifestEntry(manifest, "segments", segPath, segKey, validatedDuration, {
                 provider: providerName,
                 sceneId: narrationSceneId,
                 cueId: cue.id,
                 text: segSpec.text,
                 sample_rate_hz: sampleRateHz,
                 format: segPath.split(".").pop(),
-                rawDurationSec: duration,
+                rawDurationSec: validatedDuration,
                 trimEndSec: trimEndCfg,
               });
             }
@@ -869,16 +927,16 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
             _log(`tts: synth scene=${narrationSceneId} cue=${cue.id} seg=${segIndex + 1} -> ${segPath.split(sep).pop()}`);
             if (!segPath) {
               throw new CompileError(
-                `Missing segment path for TTS regeneration.\n\nLocation: ${dslPath}\n  Narration: ${item.id}\n  Cue: ${cue.id}\n  Segment: ${segIndex + 1}`,
+                `Missing segment path for TTS regeneration.\n\n${locationDetails}`,
               );
             }
             if (!provider?.synthesize) {
               throw new CompileError(
-                `TTS provider "${providerName}" does not support synthesis.\n\nLocation: ${dslPath}\n  Narration: ${item.id}\n  Cue: ${cue.id}\n  Segment: ${segIndex + 1}`,
+                `TTS provider "${providerName}" does not support synthesis.\n\n${locationDetails}`,
               );
             }
             ensureDir(dirname(segPath));
-            const seg = await provider.synthesize(
+            await provider.synthesize(
               {
                 text: segSpec.text,
                 voice: voiceover.voice ?? null,
@@ -891,10 +949,10 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
               },
               segPath,
             );
-            duration = seg.durationSec ?? probeDurationSec(segPath);
+            duration = assertValidSpeechAudio(segPath, locationDetails);
             if (!duration || !Number.isFinite(duration)) {
               throw new CompileError(
-                `TTS provider returned invalid duration.\n\nLocation: ${dslPath}\n  Narration: ${item.id}\n  Cue: ${cue.id}\n  Segment: ${segIndex + 1}`,
+                `TTS provider returned invalid duration.\n\n${locationDetails}`,
               );
             }
             if (duration < 0.01) {
@@ -1112,6 +1170,15 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
   writeFileSync(scriptOut, JSON.stringify(scriptToJson(script), null, 2) + "\n", "utf-8");
   if (verboseLogs) {
     _log(`write: script=${scriptOut} duration_seconds=${totalEndSec.toFixed(2)}`);
+  }
+
+  if (timingOut) {
+    const timingXml = buildTimingOverlay(outScenes, composition.id);
+    ensureDir(dirname(timingOut));
+    writeFileSync(timingOut, timingXml, "utf-8");
+    if (verboseLogs) {
+      _log(`write: timing=${timingOut}`);
+    }
   }
 
   const transitionWindowById = new Map<string, { startSec: number; endSec: number; overflowAudio?: TransitionSpec["overflowAudio"] }>();
@@ -1551,6 +1618,25 @@ export async function generateComposition(options: GenerateOptions): Promise<Gen
   let audioPath: string | null = null;
   if (audioOutPath) {
     concatAudioFiles(audioOutPath, segmentPathsForConcat);
+    const compositionAudioValidation = validateAudioFile(audioOutPath, {
+      requireAudioStream: true,
+      minBytes: 512,
+      minDurationSec: AUDIO_MIN_DURATION_SEC_DEFAULT,
+      probeSeconds: 6,
+      sampleRateHz,
+      minActivityRatio: AUDIO_MIN_ACTIVITY_RATIO_DEFAULT,
+      checkSilence: true,
+    });
+    if (!compositionAudioValidation.valid) {
+      throw new CompileError(
+        `Generated composition audio failed validation: ${compositionAudioValidation.failures.join(", ")}\n` +
+        `  File: ${audioOutPath}\n` +
+        `  Bytes: ${compositionAudioValidation.bytes}\n` +
+        `  Duration: ${compositionAudioValidation.durationSec.toFixed(3)}s\n` +
+        `  Activity Ratio: ${(compositionAudioValidation.activityRatio ?? 0).toFixed(4)}\n` +
+        `  Location: ${dslPath}\n  Composition: ${composition.id}`,
+      );
+    }
     audioPath = audioOutPath;
     if (verboseLogs) {
       _log(`write: audio=${audioOutPath} segments=${segmentPathsForConcat.length}`);
